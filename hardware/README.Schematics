@@ -1,28 +1,28 @@
 NOTES:
 
-The entrie hardware consists of two PCBs. One (green) PCB is described in
+The entire hardware consists of two PCBs. One (green) PCB is described in
 this project and the other (red PCB) is a RFID reader that is purchased
 elsewhere. The two PCBs are placed on top of each other and are connected
-via J1 and J2. Between the two PCBs, there is space for a Lithium-Ion accu
+via J1 and J2. Between the two PCBs, there is space for a Lithium-Ion battery
 that powers the two PCBs. The red PCB is a DLP-7970 ABP made by DLP,
 which can be ordered, for example, here:
 http://www.newark.com/texas-instruments/dlp-7970abp/dev-board-nfc-transceiver-boosterpack/dp/74X8084
 
 The Mini-USB connector J3 and the MAX1555 are not needed. Use a Lithium-Ion
-Accu with built-in charging circuitery instead. The Accu is then connected
+Battery with built-in charging circuitry instead. The Battery is then connected
 directly to Vcc and GND via J4.
 
 The TCM 310 and the components around it (L1, C9, C11, C12, R4, R5, and T1)
 are (currently) not needed. The purpose of the TCM 310 is to send glucose
-levels to a remote PC via an enocean based radio interface. The current
+levels to a remote PC via an Enocean based radio interface. The current
 software does not support that, though.
 
 The 12 MHz Quartz (Q1) and its capacitors C2 and C3 are not needed.
 The ATtiny 4313 uses its internal oscillator running at 4 MHz. This
-reauirfes that the low fuse of the ATtiny 4313 is programmed to 0x62
+requires that the low fuse of the ATtiny 4313 is programmed to 0x62
 (the other fuses left as shipped).
 
 Installing J4 may lead to too little space between the RFID reader PCB
-and the mocrocontroller PCB. Solder the battery wires directly onto the
+and the micro-controller PCB. Solder the battery wires directly onto the
 PCB.
 
