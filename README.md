@@ -24,9 +24,9 @@ the software provided in this project does not (yet) support the TCM 310.
 
 **DISCALIMER: This device is not a medical device and does not follow
 any established standards for medical devices. It is a purely experimental
-device and only meant to demonstrate technical possibilities.
+device and only meant to demonstrate technical possibilities.**
 
-The information in this project is distributed in the hope that it will be
+**The information in this project is distributed in the hope that it will be
 useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.**
 
