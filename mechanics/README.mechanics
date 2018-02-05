@@ -1,0 +1,20 @@
+
+The file alarm.scad is an openscad source file from which .stl files
+for both the body of an OmFLA casing and a cover for it can be generated.
+
+The choice between the body of the casing or its cover is made at the
+end of the alarm.scad file.
+
+Please note that the cover is not perfect yet because the cut-outs need some
+more fine-tuning.
+
+The .stl files can be processed directly by 3D printer programs like cura.
+
+The .stl files can be generated with e.g. openscad like this:
+
+- openscad alarm.scad
+  <F4>
+  <F5>
+  <F6>
+  File -> Export -> Export as STL.
+

@@ -263,7 +263,7 @@ module main_cover()
       }
 }
 
-/// the cover of the box
-// main_body();
-   main_cover();
+/// the body or the cover of the box. Uncomment onbe of the two lines below
+   main_body();
+// main_cover();
 
