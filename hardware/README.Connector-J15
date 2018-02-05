@@ -1,0 +1,104 @@
+
+Looking onto the front of the green micro-controller PCB, you will see the
+2x3 pin header J15. (if you only see strange characters below, then you need
+ to tell your editor to use UTF-8 encoding):
+
+
+                  J15
+             ╔═══╤═══╤═══╗
+             ║ 5 │ 2 │ 1 ║
+             ╟───┼───┼───╢
+             ║ 6 │ 4 │ 2 ║
+   ══════════╩═══╧═══╧═══╩════════════════════════════ green PCB
+
+J15 is used for 3 different purposes:
+
+1. In-circuit Programming of the ATtiny 4313.
+=============================================
+
+Ihn this case all 6 pins are used as follows:
+
+Pin   Signal  Note
+----------------------------
+ 1    MISO    to programmer
+ 2    GND
+ 3    SCL     from programmer
+ 4    MOSI    from programmer
+ 5    RESET   from programmer
+ 6    Vcc
+
+The pin-out is chosen so that a low-cost programmer like the AVRISP mkII
+can be connected directly to the board.
+
+Please note that some programmers (such as the AVRISP mkII) only monitor Vcc
+but do not drive it. In that case, the green PCB needs its own power supply,
+for example from a charged battery. For programming the ATtiny 4313 tt does
+not matter if the red RFID reader PCB is installed or not.
+
+Before programming the device, switch the device ON.
+
+2. Charging of the Lithiom battery
+==================================
+
+IT IS ASSUMED THAT YOU USE A 3.7 VOLTS LITHIUM-ION POLYMER BATTERY THAT HAS
+ITS OWN PROTECTION CIRCUTERY.
+
+In that case, the battery (which is connected directly to Vcc and GND vi J4)
+can be connected to a 5 Volt Source, for example a USB bus. The first PCB
+layout had a USB connector and a MAX 1555 charging circuit, but that will be
+removed in the future.
+
+For charging the battery, two pins of J15 are used:
+
+Pin   Signal  Note
+---------------------------------------
+ 2    GND     from charger or USB power
+ 6    Vcc     from charger or USB power
+
+Before charging the battery, switch the device OFF. The battery can remain
+inside the device during charging. Lithium Polymer batteries are infamous
+for burning or exploding, so please read the documentation that comes with
+your battery carefully!
+
+3. Debug Printouts
+==================
+
+The device contiuously prints debug messages on pin 1.
+
+Pin   Signal  Note
+--------------------
+ 1    MISO    to RxD
+ 2    GND
+
+The data format is 9600 Baud, 8 data bits.
+The signal is active low. It can be connected via a voltage divider
+to, for example, a Raspberry Pi. The voltage divider is needed because
+the output voltage is roughly the battery voltage, which is definitely
+too much for the 3.3 Volts input of the Raspberry GPIO. The author has
+killed one Raspberry Zero by ommitting the voltage divider.
+
+A Raspberry (or any other machine with an active-low 3.3 Volt serial input)
+can be connected like this:
+
+1 MISO ────┐
+           │
+          ┌┴┐
+          │ │
+          │ │ 4k7
+          │ │
+          └┬┘
+           │
+J15        ├────────── RxD Pin 9 on Raspberry GPIO
+          ┌┴┐
+          │ │
+          │ │ 10k
+          │ │
+          └┬┘
+           │
+2 GND  ────┴────────── GND Pin 10 on Raspberry GPIO
+
+
+If the serial input is 5Volt-tolerant (double check !) then the voltage divider
+is not needed. If the serial input uses V.24 levels ±12 Volts, then you need
+an appropriate converter like the MAX3232 between MISO and RxD.
+
