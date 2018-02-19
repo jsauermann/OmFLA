@@ -16,9 +16,9 @@ consumes the least power, and therefore the battery lasts the longest.
 This Atmel firmware variant produces some debug output, which consumes some
 extra power. The debug output is serial (active low, 3.3V (not V.24!) at
 pin 3 of the Atmel 4313. You can connect the Atmel 4313 pins 3 and 18, and
-then the serial data is on pin 4 of J15 (middle pin at the PCB side of J15).
-Seril Format is 8N1 at 57600 Baud. You may need to (re-)calibrate the internal
-oscillator of the Atmel 4313 to get a proper 57600 baud rate.
+then the serial data is on pin 4 of J15 (see hardware/README.Connector-J15).
+The serial format is 8N1 at 57600 Baud. You may need to (re-)calibrate the
+internal oscillator of the Atmel 4313 to get a proper 57600 baud rate.
 
 
 3. freestyle_eno
