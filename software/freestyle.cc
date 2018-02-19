@@ -15,37 +15,144 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define F_CPU 4000000
+//=============================================================================
+// ======== USER-CONFIGURABLE PARAMETERS ======================================
+//=============================================================================
+
+/// alarm thresholds
+enum User_Preferences
+{
+   ABSOLUTE_HIGH   = 240,   // mg/dl, beep if glucose > ABSOLUTE_HIGH
+   ABSOLUTE_LOW    =  80,   // mg/dl, beep if glucose < ABSOLUTE_LOW
+   RELATIVE_HIGH   =  50,   // mg/dl, beep if glucose > initial + RELATIVE_HIGH
+   RELATIVE_LOW    =  50,   // mg/dl, beep if glucose < initial - RELATIVE_LOW
+};
+
+/// how the 12-bit glucose sensor value translates to glucose in mg/dl
+/// the formula used is:
+///
+/// glucose = SENSOR_OFFSET + SENSOR_SLOPE/1000 * sensor_value
+///
+enum Sensor_Calibration
+{
+   SENSOR_SLOPE  = 130,
+   SENSOR_OFFSET = -20
+};
+//=============================================================================
+// ======== END OF USER-CONFIGURABLE PARAMETERS ===============================
+//=============================================================================
+
+enum Measurement_Intervals
+{
+   ERROR_WAIT_SECONDS  = 60,    // time to sleep after an RFID read error
+   NORMAL_WAIT_SECONDS = 600,   // time to sleep after a successful RFID read
+};
+
+// our prototype's enocean ID is FFD64680
+
+// #define F_CPU 4000000   // without calibration for 57600 baud
+#define F_CPU 3686400      // with calibration for 57600 baud
 #define F_IO  F_CPU
 
-#include <util/delay.h>
 #include <avr/io.h>
 #include <avr/eeprom.h>
 #include <avr/pgmspace.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
+#include <util/delay.h>
 
 #ifndef __AVR_ATtiny4313__
-#error "__AVR_ATtiny4313__ is not defined !!!"
+# error "__AVR_ATtiny4313__ is not defined !!!"
 #endif
 
-#define LOUD
+// the macro MODE defines if:
+//
+// * an ENOCEAN TCM 310 is installed on the PCB,
+// * the uART is used at all (TCM 310 or debug output), and
+// * formatted print functions are needed.
+//
+// This is needed so that the entire program fits into ithe 4k flash memory
+// au an Atmel 4312 chip.
+//
+#if       MODE == 0   // debug outputon TxD
+#  define ENOCEAN     0
+#  define USE_UART    1
+#  define FANCY_PRINT 1
+#elif     MODE == 1   // TxD connected to TCM 310
+# define  ENOCEAN     1
+# define  USE_UART    1
+# define  FANCY_PRINT 0
+#elif     MODE == 2   // TxD not used
+# define  ENOCEAN     0
+# define  USE_UART    0
+# define  FANCY_PRINT 0
+#else                 // illegal
+# error "MODE must be 0, 1, or 2 !"
+#endif
+
+#if FANCY_PRINT
+# define print_string(str)       _print_string(PSTR((str)), -1)
+# define print_stringv(str, val) _print_string(PSTR((str)), val)
+# define print_char(x)           _print_char(x)
+# define print_byte(x)           FIXME!
+# define error(str)              _error(PSTR(str), __LINE__, -1);
+# define errorv(str, val)        _error(PSTR(str), __LINE__, val);
+#else
+# define print_string(str)
+# define print_stringv(str, val)
+# define print_char(x)
+# define print_byte(x)           _print_char(x)
+# define error(str)
+# define errorv(str, val)
+#endif
+
+#define STR(x) #x
+#define CATN(x, n) x STR(n)
+
+#if ENOCEAN
+static uint8_t crc = 0;
+static  int8_t rx_idx = 0;
+static uint8_t id2 = 0;
+static uint8_t id3 = 0;
+static uint8_t id4 = 0;
+static bool id_valid = false;
+
+static void disable_enocean();
+static void enable_enocean();
+static void transmit_glucose(uint8_t gluco_2);
+#else
+# define disable_enocean()
+# define enable_enocean()
+# define transmit_glucose(x)
+#endif
+
+#if USE_UART
+static void
+_print_char(uint8_t ch)
+{
+# if ENOCEAN
+   enum { polynom = 0x07 };   // (x^8) + x^2 + x^1 + x^0
+   crc ^= ch;
+   for (uint8_t i = 0; i < 8; i++)
+       {
+         const bool crc_high = crc & 0x80;
+         crc <<= 1;
+         if (crc_high)   crc ^= polynom;
+       }
+# endif
+
+   while (!(UCSRA & 1 << UDRE))   ;   // wait for DR empty
+   UDR = ch;
+}
+#endif
 
 enum
 {
-   ABSOLUTE_HIGH   = 200,   // beep if glucose > ABSOLUTE_HIGH
-   ABSOLUTE_LOW    =  80,   // beep if glucose < ABSOLUTE_LOW
-   RELATIVE_HIGH   =  50,   // beep if glucose > initial + RELATIVE_HIGH
-   RELATIVE_LOW    =  50,   // beep if glucose < initial - RELATIVE_LOW
-
    ABSOLUTE_HIGH_2 = ABSOLUTE_HIGH/2,
    ABSOLUTE_LOW_2  = ABSOLUTE_LOW/2,
    RELATIVE_HIGH_2 = RELATIVE_HIGH/2,
    RELATIVE_LOW_2  = RELATIVE_LOW/2,
 };
-
-#define SENSOR_SLOPE  (0.13)
-#define SENSOR_OFFSET (-20)
 
 enum
 {
@@ -65,7 +172,8 @@ enum
    B_PROG_MOSI = 1 << PB5,   // MOSI from serial programmer
    __PROG_MISO = 1 << PB6,   // MISO to   serial programmer (not used)
    __PROG_SCL  = 1 << PB7,   // SCL  from serial programmer (not used)
-   outputs_B   = B_MOSI
+   outputs_B   = B_BTEST_OUT
+               | B_MOSI
                | B_TCM_POWER
                | B_LED_GREEN
                | B_PROG_MOSI
@@ -80,7 +188,8 @@ enum
    D_LED_RED   = 1 << PD4,   // red LED
    D_MISO      = 1 << PD5,   // MISO from RFID reader
    D_BEEPER    = 1 << PD6,   // beeper
-   outputs_D   = D_SCLK
+   outputs_D   = D_TCM_TxD
+               | D_SCLK
                | D_SSEL
                | D_LED_RED
                | D_BEEPER,
@@ -92,10 +201,13 @@ enum BOARD_STATUS
    BSTAT_RESET         = 0,
    BSTAT_RFID_ERROR    = 3,
    BSTAT_RUNNING       = 7,
-   BSTAT_BELOW_INITIAL = 4,
    BSTAT_ABOVE_INITIAL = 6,
+   BSTAT_BELOW_INITIAL = 4,
 };
-uint8_t board_status = BSTAT_RESET;
+
+static uint8_t board_status = BSTAT_RESET;
+static uint8_t trend_idx = 0;
+static uint8_t hist_idx = 0;
 
 static uint16_t batt_result = 0;
 static uint16_t initial_glucose_2 = 0;
@@ -107,9 +219,274 @@ static uint8_t initial_B = 0;
 #define output_pin(port, bit) (DDR  ## port |=   port ## _ ## bit)
 #define input_pin(port, bit)  (DDR  ## port &= ~ port ## _ ## bit)
 
-#define STR(x) #x
-#define CATN(x, n) x STR(n)
+//-----------------------------------------------------------------------------
+/// wait for \b milli_secs ms, return time slept (which can be less than
+/// requested if \b milli_secs is too large
+static uint32_t
+sleep_ms(uint32_t milli_secs)
+{
+   enum {
+          // CTC frequencies after prescaler
+          //
+          PRE_1 = 1,   // prescaler: ÷1
+          PRE_2 = 5,   // prescaler: ÷1024
 
+          F_CTC_1   =  F_IO,          // 4 MHz,   Tmax = 16.384 msec
+          F_CTC_2   =  F_IO / 1024,   // 3906 Hz, Tmax = 16.777 sec
+
+          WGmode    = 4,              // alias CTC mode, p. 113
+          WGmode_A  = (WGmode & 0x03) << WGM10,
+          WGmode_B  = (WGmode >> 2)   << WGM12,
+        };
+
+   // timer in CRC mode with 20 ms interval
+   //
+   // WGM13..10 is 0100 p. 113, (split between TCCR1B and TCCR1A)
+   TCCR1A = 0 << COM1A0   // normal mode, OC1A disconnected, see p. 111
+          | 0 << COM1B0   // normal mode, OC1B disconnected, see p. 111
+          | WGmode_A      // WGM11:WGM10 = 00  p. 111
+          ;
+
+   if (milli_secs < 16)   // short sleep
+      {
+        TCCR1B = WGmode_B        // WGM13:WGM12 = 01  p. 113
+               | PRE_1 << CS10   // prescaler: io-clk
+               ;
+
+        //      (max. <  64,000,000)
+        OCR1A = (F_CTC_1 * milli_secs) / 1000;
+      }
+   else
+      {
+        if (milli_secs > 16000)   // very long sleep
+           {
+             milli_secs = 16000;
+           }
+
+        TCCR1B = WGmode_B        // WGM13:WGM12 = 01  p. 113
+               | PRE_2 << CS10   // prescaler: io-clk
+               ;
+
+        //      (max. <  64,000,000)
+        OCR1A = (F_CTC_2 * milli_secs) / 1000;
+      }
+
+   TCNT1 = 0;
+   TIFR  = 1 << OCIE1A;   // clear old interrupts
+   TIMSK = 1 << OCIE1A;   // enable interrupts
+
+   set_sleep_mode(SLEEP_MODE_IDLE);
+
+   sleep_enable();
+   sei();
+   sleep_cpu();
+   cli();
+   sleep_disable();
+
+   TIMSK = 0;             // disable timer interrupts
+   return milli_secs;
+}
+//-----------------------------------------------------------------------------
+#if ENOCEAN
+
+static void
+disable_enocean()
+{
+   // let UART and the TCM finish their transmission
+   //
+   sleep_ms(100);
+
+   // disable UART so that normal GPIO is enabled on the serial TxD pin
+   //
+   UCSRB = 0 << RXCIE
+         | 0 << RXEN
+         | 0 << TXEN;
+
+   // make TxD an output and set it to Low. This is to protect the TCM 310's
+   // RxD from having a high level when its power is switched off
+   //
+   output_pin(D, TCM_TxD);
+   clr_pin(D, TCM_TxD);
+
+   // disconnect the TCM 310 from Vcc (TCM_POWER is active low)
+   //
+   set_pin(B, TCM_POWER);
+
+   // let the TCM 310 elko discharge. Wait long enough so that the power
+   // to the TCM 310 can fully go down.
+   //
+   sleep_ms(10000);
+}
+//-----------------------------------------------------------------------------
+static void
+enable_enocean()
+{
+   // connect the TCM 310 to Vcc (TCM_POWER is active low)
+   //
+   clr_pin(B, TCM_POWER);
+
+   // let the TCM 310 elko charge
+   //
+   sleep_ms(100);
+
+   // enable (only) the transmitter
+   //
+   UCSRB = 0 << RXCIE   // disable Rx interrupt
+         | 0 << RXEN    // disable receiver
+         | 1 << TXEN;   // enable transmitter
+
+   // let TCM 310 start up (takes max. 500 ms)
+   //
+   sleep_ms(600);
+
+   if (id_valid)   return;
+
+   // first enable_enocean() call, determine the TCM 310 enocean ID...
+
+   // enable transmitter, receiver, and receiver interrupts
+   //
+   UCSRB = 1 << RXCIE   // enable Rx interrupt
+         | 1 << RXEN    // enable receiver
+         | 1 << TXEN;   // enable transmitter
+
+static uint8_t RD_BASE_command[] = { 0x55, 0x00, 0x01, 0x00,
+                                     0x05, 0x70, 0x08, 0x38 };
+   for (uint8_t c = 0; c < sizeof(RD_BASE_command); ++c)
+       print_byte(RD_BASE_command[c]);
+
+   rx_idx = 0;
+   clr_pin(B, LED_GREEN);
+   set_pin(D, LED_RED);
+   sei();
+   for (uint8_t t = 0; t < 150; ++t)
+       {
+         _delay_ms(100);
+         if (id_valid)   break;
+         PINB = B_LED_GREEN;   // toggle green LED
+         PIND = D_LED_RED;     // toggle red LED
+       }
+   cli();
+
+   // disable receiver and receiver interrupts, enable transmitter
+   UCSRB = 0 << RXCIE   // disable Rx interrupt
+         | 0 << RXEN    // dusable receiver
+         | 1 << TXEN;   // enable transmitter
+}
+//-----------------------------------------------------------------------------
+static void
+transmit_header(uint8_t dlen, uint8_t olen)
+{
+   enum {
+          SYNC        = 0x55,
+          RADIO_ERP1  = 1
+        };
+
+   print_byte(SYNC);     // sync
+
+crc = 0;
+   print_byte(0);      // upper byte of dlen
+   print_byte(dlen);   // lower byte of dlen
+   print_byte(olen);
+   print_byte(RADIO_ERP1);
+   print_byte(crc);
+}
+//-----------------------------------------------------------------------------
+static void
+transmit_glucose(uint8_t gluco_2)
+{
+   enable_enocean();
+
+   // message has 5 bytes:
+   //
+   // COMMAND,  gluco_2,  battery-high, battery-low, board-status
+   //
+   enum
+      {
+        MESSAGE_LEN = 5,
+
+        // header constants...
+        //
+        DLEN        = 1             // Rorg
+                    + MESSAGE_LEN   // message
+                    + 4             // sender ID
+                    + 1,            // status
+
+        OLEN        = 1             // subtel
+                    + 4             // dest ID
+                    + 1             // dBm
+                    + 1,            // ENCRYPTED
+
+
+        // data constants...
+        //
+        RORG_VLD    = 0xD2,
+        Gluco_VALUE = 0x20,
+        ESTATUS     = 0,
+
+        // Jalu_server uses 0..11
+
+        // optional data constants...
+        //
+        SubTelNum   = 0,
+        DestID      = 0xFF,   // 4 times
+        dBm         = 0xFF,
+        ENCRYPTED   = 0,
+      };
+
+   transmit_header(DLEN, OLEN);
+
+crc = 0;
+   print_byte(RORG_VLD);           // data...
+   print_byte(Gluco_VALUE);        // command
+   print_byte(gluco_2);            // glucose/2
+   print_byte(batt_result >> 8);   // battery high
+   print_byte(batt_result);        // battery low
+   print_byte(board_status);       // dito
+   print_byte(0xFF);
+   print_byte(id2);
+   print_byte(id3);
+   print_byte(id4);
+   print_byte(ESTATUS);
+
+   print_byte(SubTelNum);
+   print_byte(DestID);
+   print_byte(DestID);
+   print_byte(DestID);
+   print_byte(DestID);
+   print_byte(dBm);
+   print_byte(ENCRYPTED);
+   print_byte(crc);
+
+   disable_enocean();
+}
+//-----------------------------------------------------------------------------
+static const uint8_t RD_BASE_response[] =
+   { 0x55, 0x00, 0x05, 0x01, 0x02, 0xDB, 0x00, 0xFF };
+
+ISR(USART0_RX_vect)
+{
+const uint8_t cc = UDR;
+
+   if (!id_valid)
+      {
+        switch(rx_idx)
+           {
+             case 0 ... sizeof(RD_BASE_response) - 1:
+                           if (cc != RD_BASE_response[rx_idx])   rx_idx = -1;
+                           break;
+
+             case 8:  id2 = cc;   break;
+             case 9:  id3 = cc;   break;
+             case 10: id4 = cc;
+                      id_valid = true;
+                      break;
+
+             default: break;
+           }
+             ++rx_idx;
+      }
+}
+#endif // ENOCEAN
 //-----------------------------------------------------------------------------
 static void
 init_hardware()
@@ -137,7 +514,7 @@ init_hardware()
    //
    enum
       {
-        BAUDRATE = 9600,
+        BAUDRATE = 57600,
         F_IO_16 = F_IO/16,
         BAUD_DIVISOR = (F_IO_16 / BAUDRATE) - 1
       };
@@ -145,7 +522,13 @@ init_hardware()
    UBRRH = BAUD_DIVISOR >> 8;
    UBRRL = BAUD_DIVISOR & 0xFF;
 
+#if USE_UART
+   disable_enocean();
    UCSRB = 0 << RXEN | 1 << TXEN;
+#else
+   UCSRB = 0 << RXEN | 0 << TXEN;
+#endif
+
    UCSRC = 1 << USBS | 3 << UCSZ0;   // async, 2 stop, 8 data
 
    // set up pins again AFTER all alternate functions have been enabled...
@@ -197,71 +580,6 @@ ISR(TIMER1_COMPA_vect)
 ISR(ANA_COMP_vect)
 {
    batt_result = TCNT1;
-}
-//-----------------------------------------------------------------------------
-/// wait for \b milli_secs ms, return time slept (which can be less than
-/// requested if \b milli_secs is too large
-uint32_t
-sleep_ms(uint32_t milli_secs)
-{
-   enum {
-          // CTC frequencies after prescaler
-          //
-          PRE_1 = 1,   // prescaler: ÷1
-          PRE_2 = 5,   // prescaler: ÷1024
-
-          F_CTC_1   =  F_IO,          // 4 MHz,   Tmax = 16.384 msec
-          F_CTC_2   =  F_IO / 1024,   // 3906 Hz, Tmax = 16.777 sec
-
-          WGmode    = 4,              // alias CTC mode, p. 113
-          WGmode_A  = (WGmode & 0x03) << WGM10,
-          WGmode_B  = (WGmode >> 2)   << WGM12,
-        };
-
-   // timer in CRC mode with 20 ms interval
-   //
-   // WGM13..10 is 0100 p. 113, (split between TCCR1B and TCCR1A)
-   TCCR1A = 0 << COM1A0   // normal mode, OC1A disconnected, see p. 111
-          | 0 << COM1B0   // normal mode, OC1B disconnected, see p. 111
-          | WGmode_A      // WGM11:WGM10 = 00  p. 111
-          ;
-
-   if (milli_secs < 16)   // short sleep
-      {
-        TCCR1B = WGmode_B        // WGM13:WGM12 = 01  p. 113
-               | PRE_1 << CS10   // prescaler: io-clk
-               ;
-
-        OCR1A = F_CTC_1 * milli_secs / 1000;
-      }
-   else
-      {
-        if (milli_secs > 16000)   // very long sleep
-           {
-             milli_secs = 16000;
-           }
-
-        TCCR1B = WGmode_B        // WGM13:WGM12 = 01  p. 113
-               | PRE_2 << CS10   // prescaler: io-clk
-               ;
-
-        OCR1A = F_CTC_2 * milli_secs / 1000;
-      }
-
-   TCNT1 = 0;
-   TIFR  = 1 << OCIE1A;   // clear old interrupts
-   TIMSK = 1 << OCIE1A;   // enable interrupts
-
-   set_sleep_mode(SLEEP_MODE_IDLE);
-
-   sleep_enable();
-   sei();
-   sleep_cpu();
-   cli();
-   sleep_disable();
-
-   TIMSK = 0;             // disable timer interrupts
-   return milli_secs;
 }
 //-----------------------------------------------------------------------------
 static void
@@ -408,13 +726,6 @@ init_RFID_reader()
 }
 //-----------------------------------------------------------------------------
 static void
-print_char(uint8_t ch)
-{
-   while (!(UCSRA & 1 << UDRE))   ;   // wait for DR empty
-   UDR = ch;
-}
-//-----------------------------------------------------------------------------
-static void
 print_hex1(uint8_t ch)
 {
    ch &= 0x0F;
@@ -428,6 +739,8 @@ print_hex2(uint8_t ch)
    print_hex1(ch >> 4);
    print_hex1(ch);
 }
+
+#if FANCY_PRINT
 //-----------------------------------------------------------------------------
 static void
 print_hex4(uint16_t ch)
@@ -461,19 +774,29 @@ _print_string(const char * str, int16_t val = -1)
        switch(cc)
           {
             case 0x80: print_hex2(val);   break;
+#if !ENOCEAN
             case 0x81: print_hex4(val);   break;
             case 0x90: print_dec(val);    break;
+#endif
             default:   print_char(cc);
           }
 }
-#define print_string(str)       _print_string(PSTR((str)), -1)
-#define print_stringv(str, val) _print_string(PSTR((str)), val)
-
+//-----------------------------------------------------------------------------
+static void
+_error(const char * str, uint16_t line, int16_t val)
+{
+   _print_string(PSTR("*** "), -1);
+   _print_string(str, -1);
+   _print_string(PSTR(" at line "), -1);
+   print_dec(line);
+   if (val != -1)   _print_string(PSTR(" (\x80)"), val);
+   print_char('\n');
+}
+#endif   // not ENOACEAN
 //-----------------------------------------------------------------------------
 inline void
 beep(uint8_t repeat, uint8_t ticks_on, uint8_t ticks_off)
 {
-#ifdef LOUD   // always beep
    print_stringv("beep \x90\n", ticks_on);
    for (int j = 0; j < repeat; ++j)
       {
@@ -482,34 +805,7 @@ beep(uint8_t repeat, uint8_t ticks_on, uint8_t ticks_off)
         clr_pin(D, BEEPER);
         sleep_ms(10 * ticks_off);
       }
-#else         // jumper selects beep on/ogg
-   if (initial_B & B_PROG_MOSI)
-      {
-        print_stringv("beep \x90\n", ticks_on);
-      }
-   else for (int j = 0; j < repeat; ++j)
-      {
-        set_pin(D, BEEPER);
-        sleep_ms(10 * ticks_on);
-        clr_pin(D, BEEPER);
-        sleep_ms(10 * ticks_off);
-      }
-#endif
 }
-//-----------------------------------------------------------------------------
-static void
-_error(const char * str, uint16_t line, int16_t val)
-{
-   _print_string(PSTR("*** "));
-   _print_string(str);
-   _print_string(PSTR(" at line "));
-   print_dec(line);
-   if (val != -1)   _print_string(PSTR(" (\x80)"), val);
-   print_char('\n');
-}
-#define error(str)         _error(PSTR(str), __LINE__, -1);
-#define errorv(str, val)   _error(PSTR(str), __LINE__, val);
-
 //-----------------------------------------------------------------------------
 static uint8_t
 read_ISR()
@@ -539,7 +835,7 @@ gluco(int rx_offs)
 const int h = rx_data[rx_offs + 3];
 const int l = rx_data[rx_offs + 2];
 const uint16_t val = h << 8 | l;
-const int glucose(SENSOR_OFFSET + (val & 0x0FFF)*SENSOR_SLOPE);
+const int glucose(SENSOR_OFFSET + (val & 0x0FFF)*(0.001*SENSOR_SLOPE));
    return glucose >> 1;
 }
 
@@ -566,8 +862,6 @@ gluco_sort()
 static void
 decode_Block(uint8_t block)
 {
-const uint8_t addr = 8*block;
-
 const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
    if (FIFO_len > MAX_FIFO)
       {
@@ -594,13 +888,22 @@ const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
 
    // the trend table is contained in blocks 4...15
    //
-   if (block < 4)     return;
+   if (block < 3)     return;
    if (block >= 16)   return;
 
    print_stringv("blk \x90  [", block);
-   print_stringv("\x90] ", addr);
+   print_stringv("\x90] ", 8*block);
 
    for (int j = 9; j >= 2; --j)   print_hex2(rx_data[j]);
+
+   if (block == 3)
+      {
+        hist_idx  = rx_data[6];    // mirrored!
+        trend_idx = rx_data[5];    // mirrored!
+        print_stringv("  trend_idx:: #\x90", trend_idx);
+        print_stringv(", hist_idx:: #\x90\n", hist_idx);
+        return;
+      }
 
    switch(block % 3)
       {
@@ -623,11 +926,11 @@ const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
    return;
 
 error_out:
-   beep(3, 10, 5);
+   beep(3, 20, 10);
 
    if ((block % 3) == 1)   gluco2_vec[gluco_idx++] = 0;   // 2 values per block
    gluco2_vec[gluco_idx++] = 0;                       // 1 more gluco2_vec
-   print_stringv("    failed block: #\x90", block);
+   print_stringv("    failed block: #\x90\n", block);
 }
 //-----------------------------------------------------------------------------
 const uint8_t setup[] =
@@ -694,6 +997,7 @@ const uint8_t istat = read_ISR();
    if ((istat & 0xC0) != 0xC0)
       {
         errorv("missing Rx or Tx Interrupt", istat);
+        errorv("block number", block);
         return true;
       }
 
@@ -790,6 +1094,9 @@ battery_test()
         | 2 << ACIS0   // interrupt on falling edge
         ;
 
+   // make B_BTEST_OUT an input with pullup. The pullup then charges
+   // capacitor C6.
+   //
    input_pin(B, BTEST_OUT);  // BTEST_OUT: in: pullup charges capacitor
    set_pin(B, BTEST_OUT);    // enable pullup on AIN0
 
@@ -810,16 +1117,7 @@ battery_test()
    //
    clr_pin(B, BTEST_OUT);      // disable pullup on AIN0
    output_pin(B, BTEST_OUT);   // BTEST_OUT direction = out
-
-   clr_pin(B, BTEST_OUT);      // drive AIN0 low
-   sleep_ms(10);
-   set_pin(B, BTEST_OUT);      // drive AIN0 high
-   sleep_ms(10);
-   clr_pin(B, BTEST_OUT);      // drive AIN0 low
-   sleep_ms(10);
-   set_pin(B, BTEST_OUT);      // drive AIN0 high
-   sleep_ms(30);
-   clr_pin(B, BTEST_OUT);      // drive AIN0 low
+   clr_pin(B, BTEST_OUT);      // drive AIN0 low 
 }
 //-----------------------------------------------------------------------------
 //
@@ -844,7 +1142,7 @@ doit(uint16_t j)
    gluco_idx = 0;
 
 bool errors;
-   for (uint8_t b = 4; b < 16; ++b)
+   for (uint8_t b = 3; b < 16; ++b)
        {
          if ((errors = read_Block(b)))   break;
          decode_Block(b);
@@ -855,8 +1153,9 @@ bool errors;
    if (errors)
       {
          board_status = BSTAT_RFID_ERROR;
+         transmit_glucose(0);
          beep(3, 3, 3);
-         return 60000;
+         return 1000*int32_t(ERROR_WAIT_SECONDS);
       }
 
    gluco_sort();
@@ -866,6 +1165,8 @@ bool errors;
 uint16_t aver_2 = 0;
    for (uint8_t j = 3; j < 13; ++j)   aver_2 += gluco2_vec[j];
    aver_2 /= 10;
+
+   transmit_glucose(aver_2);
 
    print_stringv("glucose: \x90\n", 2*aver_2);   // aver_2 is halved!
 
@@ -879,7 +1180,7 @@ bool need_beep;
       {
         board_status = BSTAT_ABOVE_INITIAL;
         need_beep = aver_2 > ABSOLUTE_HIGH_2
-                 || aver_2 > initial_glucose_2 + RELATIVE_HIGH_2;
+                 || aver_2 > (initial_glucose_2 + RELATIVE_HIGH_2);
         if (need_beep)
            {
              set_pin(D, LED_RED);      // red LED on
@@ -888,17 +1189,17 @@ bool need_beep;
       }
    else   // glucose has decreased
       {
+        board_status = BSTAT_BELOW_INITIAL;
         need_beep = aver_2 < ABSOLUTE_LOW_2
-                 || aver_2 < initial_glucose_2 - RELATIVE_LOW_2;
+                 || aver_2 < (initial_glucose_2 - RELATIVE_LOW_2);
         if (need_beep)
            {
              set_pin(B, LED_GREEN);    // green LED on
              beep(10, 50, 20);
            }
-        board_status = BSTAT_BELOW_INITIAL;
       }
 
-   return 120000;
+   return 1000*int32_t(NORMAL_WAIT_SECONDS);
 }
 //-----------------------------------------------------------------------------
 int
@@ -910,11 +1211,18 @@ main(int, char *[])
 
 const uint8_t calib = eeprom_read_byte(0);
    if (calib != 0xFF)   OSCCAL = calib;   // explicit calibration
-   else                 OSCCAL = 0x47;    // good for 4 MHz
+// else                 OSCCAL = 0x47;    // good for  9600 Baud at 4 MHz
+   else                 OSCCAL = 0x3B;    // good for 57600 Baud at 4 MHz
+
+   // transmit a glucose value of 0 as a restart indication and to
+   // inform receiver(s) about the battery status.
+   //
+   transmit_glucose(0);
 
    for (uint16_t j = 0;; ++j)
        {
 //       dump_registers();
+
          int32_t wait = doit(j);
          while (wait > 0)   wait -= sleep_ms(wait);
        }
