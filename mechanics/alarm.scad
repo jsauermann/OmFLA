@@ -1,5 +1,10 @@
 
-DEBUG = 0;
+// variables that may be changed by the user
+DEBUG  = 0;   // debug mode
+COVER  = 0;   // print the cover instead of the body
+BUCKLE = 0;   // print the body with left and right belt loops
+
+// variables that ahould not be changed by the user
 
 tolerance = 0.20;
 tolerance2 = 2*tolerance;
@@ -116,7 +121,7 @@ profile_2D()
 
 module profile_3D()
 {
-   linear_extrude(height = red_pcb_l + 10,
+   linear_extrude(height = red_pcb_l + 7,
                   center = false,
                   convexity = 10,
                   twist = 0) profile_2D();
@@ -135,6 +140,18 @@ module box_3D()
    translate([box_w_o/2, 0, 20])
    rotate([-90, 0, 0])
    cylinder(h = 5, r = sensor_radius + 1, $fn = 90);
+
+   // left snap-in wedge
+   //
+   translate([box_thickness, 9.6, 42])
+   rotate([0, -90, -90])
+   wedge_3D();
+
+   // right snap-in wedge
+   //
+   translate([box_w_o - box_thickness, 18.5, 42])
+   rotate([0, -90, 90])
+   wedge_3D();
 }
 
 /// the box with cutouts for the sensor and the beeper
@@ -254,6 +271,52 @@ prog_h = 6.1;
       }
 }
 
+///  a (left or right) buckle for holding the casing
+module buckle_2D(rnd)
+{
+l  = 24;
+h1 =  6;
+dh = 1;
+h2 = h1 + dh;
+wi =  1.141*(rnd + dh);
+   polygon([[ 0,  0],               [wi,  0],
+            [wi + h1, h1],          [wi + h1 + l, h1],
+            [wi + h1 + l + h1, 0],  [wi + h1 + l + h1 + wi,  0],
+            [wi + h1 + l + h1 + wi - h2, h2],          [h2, h2]]);
+}
+
+module buckle_3D()
+{
+rnd = 1;
+   translate([0, 0, rnd])
+   minkowski($fn=20)
+      {
+        linear_extrude(height = 15,
+                       center = false,
+                       convexity = 2,
+                       twist = 0) buckle_2D(rnd);
+
+        sphere(rnd);
+      }
+}
+
+/// a wedge for snap-in of the cover
+module wedge_2D()
+{
+l = 30;
+h = 2.2;
+
+   polygon([[0, 0], [l, 0], [0, h]]);
+}
+
+module wedge_3D()
+{
+   linear_extrude(height = pcb_dist0 - 4,
+                  center = false,
+                  convexity = 2,
+                  twist = 0) wedge_2D();
+}
+
 module main_cover()
 {
    intersection()
@@ -263,7 +326,44 @@ module main_cover()
       }
 }
 
+module snap_out_hole()
+{
+   translate([-30, 14, 41])
+   rotate([0, 90, 0])
+   cylinder(h = 100, r = 1, $fn = 20);
+}
+
+module main_body_and_buckle()
+{
+   union()
+      {
+        main_body();
+
+        // left buckle
+        //
+        translate([0.5, 22, 3])
+        rotate([0, -90, 90])
+        buckle_3D();
+
+        // right buckle
+        //
+        translate([box_w_o - 0.5, 5, 3])
+        rotate([0, -90, -90])
+        buckle_3D();
+      }
+}
+
 /// the body or the cover of the box. Uncomment onbe of the two lines below
-   main_body();
-// main_cover();
+
+if (COVER)   main_cover();
+else         difference()
+   {
+     if (BUCKLE)   main_body_and_buckle();
+     else          main_body();
+
+     // a hole at the end of the snap-in flap, so that the cover
+     // can be released when snapped in. The cover side of the snap-in
+     // mechanism is currently missing, though.
+     snap_out_hole();
+   }
 

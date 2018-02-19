@@ -3,7 +3,11 @@ The file alarm.scad is an openscad source file from which .stl files
 for both the body of an OmFLA casing and a cover for it can be generated.
 
 The choice between the body of the casing or its cover is made at the
-end of the alarm.scad file.
+beginning of the alarm.scad file by setting the COVER variable.
+
+There are 2 body variants: a rectangular body and a rectangular body with
+two buckles that are quite useful if the box shall be held in place with
+an elastic belt. This choice is made by setting the BUCKLE variable.
 
 Please note that the cover is not perfect yet because the cut-outs need some
 more fine-tuning.
