@@ -8,19 +8,29 @@ that powers the two PCBs. The red PCB is a DLP-7970 ABP made by DLP,
 which can be ordered, for example, here:
 http://www.newark.com/texas-instruments/dlp-7970abp/dev-board-nfc-transceiver-boosterpack/dp/74X8084
 
-The Mini-USB connector J3 and the MAX1555 are not needed. Use a Lithium-Ion
-Battery with built-in charging circuitry instead. The Battery is then connected
-directly to Vcc and GND via J4.
+The expected battery is a Lithium-Ion Battery with built-in charging circuitry.
+The Battery is connected directly to Vcc and GND via J4.
 
-The TCM 310 and the components around it (L1, C9, C11, C12, R4, R5, and T1)
-are (currently) not needed. The purpose of the TCM 310 is to send glucose
-levels to a remote PC via an Enocean based radio interface. The current
-software does not support that, though.
+The Enocean TCM 310 module and and the components around it (L1, C9, C11, C12,
+R4, R5, and T1) are only needed if the device shall send the glucose values
+read from the Freestyle Libre sensor (along with the current battery charging
+level) to a remote receiver via an Enocean based radio interface.
 
-The 12 MHz Quartz (Q1) and its capacitors C2 and C3 are not needed.
-The ATtiny 4313 uses its internal oscillator running at 4 MHz. This
-requires that the low fuse of the ATtiny 4313 is programmed to 0x62
-(the other fuses left as shipped).
+The 12 MHz Quartz (Q1) and its capacitors C2 and C3 shown in the schematic are
+not needed. The ATtiny 4313 uses its internal oscillator running at 4 MHz.
+The Enocean module (and also the serial debug output) needs a 57,600 baud
+clock. For 57,600 baud, internal 4 MHz oscillator would need a baud rate divisor
+of 4.34, which is impossible because the divisor is an integer. For that
+reason, if the UART is needed (for Enocean or for serial debug output) then
+the internal oscillator has to be calibrated down to 4x16x57,600 = 3,686,400 Hz.
+On the author's device this was achieved with OSCCAL = 0x3B. Alternatively
+one could use a 3,686,400 MHz crystal, although the power consumption may be
+higher than for the internal oscillator.
+
+For an ATtiny 4313 to use the 4 MHz oscillator, its low fuse must programmed to
+0x62 (the other fuses left as shipped). If you should mistakenly program the
+low fuse to use an external crystal, then you cannot re-program the device or
+the fuses unless an external crystal is (temporarily) connected.
 
 Installing J4 may lead to too little space between the RFID reader PCB
 and the micro-controller PCB. Solder the battery wires directly onto the
