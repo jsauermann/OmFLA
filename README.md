@@ -18,9 +18,12 @@ NOT to replace the standard Abbott reader. In fact, the first action after
 an alarm shall be to determine the glucose level with either the standard
 reader, or even with a traditional blood glucose measurement.
 
-The PCB of the device is prepared for an Enocean TCM 310 module that could
-transmit the glucose levels to a receiver withing, say, 20 meters. However,
-the software provided in this project does not (yet) support the TCM 310.
+The PCB of the device is prepared for an Enocean TCM 310 module that can
+transmit the glucose levels and the battery level to a receiver withing,
+say, 20 meters. Low-cost receiver modules, for example for Raspberry Pis
+are available. Alternatively, one can used a second OmFLA PCB as receiver
+and connect it to the serial port of a Raspberry Pi or of some
+micro-controller.
 
 **DISCLAIMER: This device is not a medical device and does not follow
 any established standards for medical devices. It is a purely experimental
@@ -32,7 +35,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.**
 
 A distinguishing feature of the device described in this project is that
 it works without any additional devices like expensive smart watches or even
-smart-phones. One of the design targets was low cost as opposed to high
+smart-phones. One of the design goals was low cost as opposed to high
 functionality, and the components of our prototype were below $50 (including
-the RFID reader, but excluding the PCB).
+the RFID reader, but excluding the PCB and the optional TCM 310).
 
