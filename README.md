@@ -38,6 +38,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.**
 A distinguishing feature of the device described in this project is that
 it works without any additional devices like expensive smart watches or even
 smart-phones. One of the design goals was low cost as opposed to high
-functionality, and the components of our prototype were below $50 (including
-the RFID reader, but excluding the PCB and the optional TCM 310).
+functionality, and the cost of the components for the prototype were well
+below US-$ 50.00 (including the RFID reader, but excluding the PCB and the
+optional TCM 310 radio transceiver).
 
