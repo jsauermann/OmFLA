@@ -1,11 +1,13 @@
 # OmFLA
-One more Freestyle Libre Alarm
+**O**ne **m**ore **F**reestyle **L**ibre **A**larm
 
 **NOTE: this repository is currently under construction. A working prototype
-exists, but the transfer of files is still ongoing.**
+of the OmFLA device exists and is being tested. The source files used to build
+the prototype have already been transferred into this repository, but the
+documentation of the device is still ongoing.**
 
-This project describes the hardware (schematic and PCB), micro-controller
-software (for an Atmel ATtiny 4313), and mechanics (openscad file for 3D
+This project contains the hardware (schematic and PCB layout), micro-controller
+software (C++ for an Atmel ATtiny 4313), and mechanics (openscad file for 3D
 printers) of a small device that MAY be useful for users of Freestyle Libre
 glucose sensors. The device beeps if the glucose levels reported by the
 sensors exceed certain thresholds.
@@ -13,7 +15,7 @@ sensors exceed certain thresholds.
 The device is only reading the sensors and can therefore co-exist with the
 standard reader shipped by Abbott. As a consequence the device cannot
 initialize new sensors. The primary purpose of the device is to be worn at
-night and warning the user about excessive glucose levels. The purpose is
+night and to warn the user about excessive glucose levels. The purpose is
 NOT to replace the standard Abbott reader. In fact, the first action after
 an alarm shall be to determine the glucose level with either the standard
 reader, or even with a traditional blood glucose measurement.
