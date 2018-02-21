@@ -38,6 +38,17 @@ enum Sensor_Calibration
    SENSOR_SLOPE  = 130,
    SENSOR_OFFSET = -20
 };
+
+/// how battery levels map to beep counts (at power-on of the device)
+enum Battery_beeps
+{
+   BATTERY_1 = 1200,   // beep once (battery is low)
+   BATTERY_2 = 1100,
+   BATTERY_3 = 1000,
+   BATTERY_4 =  900,
+   BATTERY_5 =  800,   // beeep 5 times (battery is full)
+};
+
 //=============================================================================
 // ======== END OF USER-CONFIGURABLE PARAMETERS ===============================
 //=============================================================================
@@ -1132,11 +1143,22 @@ doit(uint16_t j)
    LED_01(board_status);
 
    battery_test();
+   if (j == 0)   // power ON
+      {
+        uint8_t battery_beeps = 5;
+
+        if      (batt_result >= BATTERY_1)   battery_beeps = 1;
+        else if (batt_result >= BATTERY_2)   battery_beeps = 2;
+        else if (batt_result >= BATTERY_3)   battery_beeps = 3;
+        else if (batt_result >= BATTERY_4)   battery_beeps = 4;
+
+        beep(battery_beeps, 20, 20);
+      }
 
    print_stringv("j=\x90", j);
-   print_stringv(" iniB=\x80", initial_B);
-   print_stringv(" status=\x80", board_status);
-   print_stringv(" battery=\x90\n", batt_result);
+// print_stringv(" iniB=\x80", initial_B);
+   print_stringv(" stat=\x80", board_status);
+   print_stringv(" batt=\x90\n", batt_result);
 
    setup_chip();
    gluco_idx = 0;
@@ -1154,7 +1176,7 @@ bool errors;
       {
          board_status = BSTAT_RFID_ERROR;
          transmit_glucose(0);
-         beep(3, 3, 3);
+         beep(3, 10, 10);
          return 1000*int32_t(ERROR_WAIT_SECONDS);
       }
 
@@ -1170,7 +1192,6 @@ uint16_t aver_2 = 0;
 
    print_stringv("glucose: \x90\n", 2*aver_2);   // aver_2 is halved!
 
-bool need_beep;
    if (initial_glucose_2 == 0)   // first glucose measurement
       {
         initial_glucose_2 = aver_2;
@@ -1179,9 +1200,8 @@ bool need_beep;
    else if (aver_2 >= initial_glucose_2)   // glucose has increased
       {
         board_status = BSTAT_ABOVE_INITIAL;
-        need_beep = aver_2 > ABSOLUTE_HIGH_2
-                 || aver_2 > (initial_glucose_2 + RELATIVE_HIGH_2);
-        if (need_beep)
+        if (aver_2 > ABSOLUTE_HIGH_2
+         || aver_2 > (initial_glucose_2 + RELATIVE_HIGH_2))
            {
              set_pin(D, LED_RED);      // red LED on
              beep(10, 50, 20);
@@ -1190,9 +1210,8 @@ bool need_beep;
    else   // glucose has decreased
       {
         board_status = BSTAT_BELOW_INITIAL;
-        need_beep = aver_2 < ABSOLUTE_LOW_2
-                 || aver_2 < (initial_glucose_2 - RELATIVE_LOW_2);
-        if (need_beep)
+        if (aver_2 < ABSOLUTE_LOW_2
+         || aver_2 < (initial_glucose_2 - RELATIVE_LOW_2))
            {
              set_pin(B, LED_GREEN);    // green LED on
              beep(10, 50, 20);
