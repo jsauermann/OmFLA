@@ -1,17 +1,43 @@
 
+0. General
+----------
+The Makefile in this directory can perform different tasks, like compiling
+the firmware, (programming (flashing) a device, or programming device fuses,
+
+A complete list of tasks that the Makefile can perform is obtained by typing:
+
+    make help
+
+1. Prerequisites
+----------------
+
+In order to compile the firmware, the free AVR-GCC compiler is needed, see
+https://gcc.gnu.org/wiki/avr-gcc
+
+For flashing the devices the free avrdude programmer software:
+
+http://homepages.uni-regensburg.de/~erc24492/AVR_Dude/AVR_Dude.html
+
+and a suitable programmer is assumed. You can, of course, use a different
+programmer software by adopting the Makefile accordingly or by issuing the
+appropriate commands manually.
+
+2. Firmware Variants
+--------------------
+
 The Makefile produces 3 different firmware variants from the source file
 freestyle.cc. Only one of these variants shall be flashed into the Atmel chip.
-The differences between the variants are the following:
+The variants and the differences between them are the following:
 
-1. freestyle_nod
-----------------
+2.1 freestyle_nod
+-----------------
 
 This is the Atmel firmware for the "normal user" (that's you). This variant
 consumes the least power, and therefore the battery lasts the longest.
 
 
-2. freestyle_deb
-----------------
+2.2 freestyle_deb
+-----------------
 
 This Atmel firmware variant produces some debug output, which consumes some
 extra power. The debug output is serial (active low, 3.3V (not V.24!) at
@@ -21,17 +47,17 @@ The serial format is 8N1 at 57600 Baud. You may need to (re-)calibrate the
 internal oscillator of the Atmel 4313 to get a proper 57600 baud rate.
 
 
-3. freestyle_eno
-----------------
+2.3 freestyle_eno
+-----------------
 
 This Atmel firmware variant can be used to send the measured glucose values
 and the current battery level to a remote computer within, say, 20 meters
 of the OMFLA device. This needs an enocean TCM310 device on the OMFLA PCB.
-The power consuption is somewhat higher. There exist reasonably cheap TCM310
+The power consumption is somewhat higher. There exist reasonably cheap TCM310
 receivers for the Raspberry Pi. Frame format is according to the VLD (variable
 length data) profile. Currently 3 bytes are sent: Glucose/2, battery-high and
 battery-low. Battery level is the number of CPU cycles to charge an RC circuit
-(consisting of C6 = 22 nF and an Atmel 4313 input pullup of 20-50 kOhm) to the
-Atmel's bandgap reference of 1.0-1.2 Volts). The Atmel 4313 runs at 4 MHz.
+(consisting of C6 = 22 nF and an Atmel 4313 input pull-up of 20-50 kOhm) to the
+Atmel's band-gap reference of 1.0-1.2 Volts). The Atmel 4313 runs at 4 MHz.
 
 
