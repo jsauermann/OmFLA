@@ -1,10 +1,11 @@
-### Kind of Issue (fault, missing information, etc.)
-
-
-### Expected Behavior
+### Kind of Issue (fault, missing information, improvement proposal, ...)
 
 
 ### Observed Behaviour
 
 
-### Probable Cause (optional)
+### Expected Behavior
+
+
+### Probable Cause (if known)
+
