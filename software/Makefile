@@ -17,8 +17,8 @@ PART = attiny4313
 ################################################33
 # FUSE selection...
 #
-FUSEL = 0x62
-FUSEL_DESCR = internal 4 MHz oscillator
+FUSEL = 0xA2   # internal 4 MHz oscillator ÷1
+FUSEL_DESCR = internal 4 MHz oscillator ÷1
 
 ################################################33
 # CALIBRATION selection...
@@ -39,10 +39,11 @@ DUDE = $(TOOLS)/avrdude -p $(PART) -c $(PROGRAMMER)
 # freestyle_eno: debugging (UART) disabled,  enocean TCM 310 installed
 # freestyle_nod: debugging (UART) disabled,  enocean TCM 310 not installed
 # 
-all:	freestyle_deb.hex \
-	freestyle_eno.hex \
+all:	beeper_test.hex   \
+	calibrate.hex     \
 	freestyle_nod.hex \
-	calibrate.hex
+	freestyle_eno.hex \
+	freestyle_deb.hex
 
 help:
 	@echo "make targets:"
@@ -61,16 +62,19 @@ help:
 	@echo "    !!! DEVICE MUST BE POWERED ON !!!"
 	@echo
 
+beeper_test.elf: beeper_test.cc Makefile
+	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) $< -o $@
+
 calibrate.elf: calibrate.cc Makefile
 	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) $< -o $@
 
-freestyle_deb.elf: freestyle.cc Makefile
+freestyle_deb.elf: freestyle.cc RFID_functions.cc print_functions.cc Makefile
 	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) -D MODE=0 $< -o $@
 
-freestyle_eno.elf: freestyle.cc Makefile
+freestyle_eno.elf: freestyle.cc RFID_functions.cc enocean.cc Makefile
 	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) -D MODE=1 $< -o $@
 
-freestyle_nod.elf: freestyle.cc Makefile
+freestyle_nod.elf: freestyle.cc RFID_functions.cc Makefile
 	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) -D MODE=2 $< -o $@
 
 %.lss: %.elf
@@ -104,6 +108,10 @@ flash_cal:	all
 	$(DUDE) -U flash:w:calibrate.hex
 	true
 
+flash_beep:	all
+	$(DUDE) -U flash:w:beeper_test.hex
+	true
+
 signature:
 	$(DUDE) -U signature:r:-:h
 
@@ -119,10 +127,11 @@ eeprom0:
 calibration:
 	$(DUDE) -U calibration:r:-:h
 
-# default low fuse: 0x64 (= internal 8 MHz oscillator)
-#                   0x62 internal 4 MHz oscillator
-#                    0x68 external crystal (nags if not present)
-#                    0x28 external crystal, output on pin 6
+# default low fuse: 0x64 (= internal 8 MHz oscillator)             ÷8
+#                   0xA2 internal 4 MHz oscillator                 ÷1
+#                   0x62 internal 4 MHz oscillator                 ÷8
+#                   0x68 external crystal (hangs if not present)   ÷8
+#                   0x28 external crystal, output on pin 6         ÷8
 wfusel:
 	$(DUDE) -F -U lfuse:w:$(FUSEL):m
 

@@ -15,54 +15,73 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//=============================================================================
-// ======== USER-CONFIGURABLE PARAMETERS ======================================
-//=============================================================================
+/*
+ top-level functions for the OmFLA device
+ */
 
-/// alarm thresholds
-enum User_Preferences
-{
-   ABSOLUTE_HIGH   = 240,   // mg/dl, beep if glucose > ABSOLUTE_HIGH
-   ABSOLUTE_LOW    =  80,   // mg/dl, beep if glucose < ABSOLUTE_LOW
-   RELATIVE_HIGH   =  50,   // mg/dl, beep if glucose > initial + RELATIVE_HIGH
-   RELATIVE_LOW    =  50,   // mg/dl, beep if glucose < initial - RELATIVE_LOW
-};
+#include "user_defined_parameters.hh"
 
-/// how the 12-bit glucose sensor value translates to glucose in mg/dl
-/// the formula used is:
-///
-/// glucose = SENSOR_OFFSET + SENSOR_SLOPE/1000 * sensor_value
-///
-enum Sensor_Calibration
-{
-   SENSOR_SLOPE  = 130,
-   SENSOR_OFFSET = -20
-};
-
-/// how battery levels map to beep counts (at power-on of the device)
-enum Battery_beeps
-{
-   BATTERY_1 = 1200,   // beep once (battery is low)
-   BATTERY_2 = 1100,
-   BATTERY_3 = 1000,
-   BATTERY_4 =  900,
-   BATTERY_5 =  800,   // beeep 5 times (battery is full)
-};
-
-//=============================================================================
-// ======== END OF USER-CONFIGURABLE PARAMETERS ===============================
-//=============================================================================
-
+// NOTE: 4313 Fuse settings:
+//
+// Extended Fuse: 0xFF (default)
+// High Fuse:     0xDF (default)
+// Low Fuse:      0x62 (default)
+//
 enum Measurement_Intervals
 {
    ERROR_WAIT_SECONDS  = 60,    // time to sleep after an RFID read error
    NORMAL_WAIT_SECONDS = 600,   // time to sleep after a successful RFID read
 };
 
-// our prototype's enocean ID is FFD64680
+// the macro MODE defines if:
+//
+// * an ENOCEAN TCM 310 is installed on the PCB,
+// * the UART is used at all (TCM 310 or debug output), and
+// * formatted print functions are needed.
+//
+// This is needed so that the entire program fits into the 4k flash memory
+// of an Atmel 4313 chip.
+//
+#if       MODE == 0   // debug output on TxD
+#  define ENOCEAN     0
+#  define HARD_UART   0
+#  define SOFT_UART   1
+#  define FANCY_PRINT 1
+#elif     MODE == 1   // TxD connected to TCM 310
+# define  ENOCEAN     1
+# define  HARD_UART   1
+#  define SOFT_UART   0
+# define  FANCY_PRINT 0
+#elif     MODE == 2   // TxD not used
+# define  ENOCEAN     0
+# define  HARD_UART   0
+#  define SOFT_UART   0
+# define  FANCY_PRINT 0
+#else                 // illegal
+# error "MODE must be 0, 1, or 2 !"
+#endif
 
-// #define F_CPU 4000000   // without calibration for 57600 baud
-#define F_CPU 3686400      // with calibration for 57600 baud
+#if HARD_UART
+# define F_CPU 3686400      // with calibration for 57600 baud
+# define  CPU_CALIB 0x3B
+#else
+# define F_CPU 4000000      // without calibration for 57600 baud
+# define  CPU_CALIB 0x26
+#endif
+
+#if SOFT_UART
+#if MODE == 1   // TxD connected to TCM 310
+# define   SOFT_BAUD   57600
+# define   SOFT_PORT   PORTD
+# define   SOFT_PBIT   D_TCM_TxD
+#else           // TxD on B_PROG_MISO (J15 pin 1)
+# define   SOFT_BAUD   9600
+# define   SOFT_PORT   PORTB
+# define   SOFT_PBIT   B_PROG_MISO
+#endif
+enum { SOFT_COUNT = (F_CPU / SOFT_BAUD)/4 - 2 };
+#endif
+
 #define F_IO  F_CPU
 
 #include <avr/io.h>
@@ -74,31 +93,6 @@ enum Measurement_Intervals
 
 #ifndef __AVR_ATtiny4313__
 # error "__AVR_ATtiny4313__ is not defined !!!"
-#endif
-
-// the macro MODE defines if:
-//
-// * an ENOCEAN TCM 310 is installed on the PCB,
-// * the uART is used at all (TCM 310 or debug output), and
-// * formatted print functions are needed.
-//
-// This is needed so that the entire program fits into ithe 4k flash memory
-// au an Atmel 4312 chip.
-//
-#if       MODE == 0   // debug outputon TxD
-#  define ENOCEAN     0
-#  define USE_UART    1
-#  define FANCY_PRINT 1
-#elif     MODE == 1   // TxD connected to TCM 310
-# define  ENOCEAN     1
-# define  USE_UART    1
-# define  FANCY_PRINT 0
-#elif     MODE == 2   // TxD not used
-# define  ENOCEAN     0
-# define  USE_UART    0
-# define  FANCY_PRINT 0
-#else                 // illegal
-# error "MODE must be 0, 1, or 2 !"
 #endif
 
 #if FANCY_PRINT
@@ -121,41 +115,19 @@ enum Measurement_Intervals
 #define CATN(x, n) x STR(n)
 
 #if ENOCEAN
-static uint8_t crc = 0;
-static  int8_t rx_idx = 0;
-static uint8_t id2 = 0;
-static uint8_t id3 = 0;
-static uint8_t id4 = 0;
-static bool id_valid = false;
-
 static void disable_enocean();
 static void enable_enocean();
 static void transmit_glucose(uint8_t gluco_2);
+static uint8_t crc = 0;
 #else
-# define disable_enocean()
-# define enable_enocean()
-# define transmit_glucose(x)
+static void transmit_glucose(uint8_t gluco_2) {}
 #endif
 
-#if USE_UART
-static void
-_print_char(uint8_t ch)
-{
-# if ENOCEAN
-   enum { polynom = 0x07 };   // (x^8) + x^2 + x^1 + x^0
-   crc ^= ch;
-   for (uint8_t i = 0; i < 8; i++)
-       {
-         const bool crc_high = crc & 0x80;
-         crc <<= 1;
-         if (crc_high)   crc ^= polynom;
-       }
-# endif
-
-   while (!(UCSRA & 1 << UDRE))   ;   // wait for DR empty
-   UDR = ch;
-}
-#endif
+#define get_pin(port, bit)    (PIN  ## port &    port ## _ ## bit ? 0xFF : 0x00)
+#define set_pin(port, bit)    (PORT ## port |=   port ## _ ## bit)
+#define clr_pin(port, bit)    (PORT ## port &= ~ port ## _ ## bit)
+#define output_pin(port, bit) (DDR  ## port |=   port ## _ ## bit)
+#define input_pin(port, bit)  (DDR  ## port &= ~ port ## _ ## bit)
 
 enum
 {
@@ -165,7 +137,7 @@ enum
    RELATIVE_LOW_2  = RELATIVE_LOW/2,
 };
 
-enum
+enum IO_pins
 {
    __A_XTAL_1  = 1 << PA0,   // XTAL1 (not used)
    __A_XTAL_2  = 1 << PA1,   // XTAL2 (not used)
@@ -181,15 +153,34 @@ enum
    B_TCM_POWER = 1 << PB3,   // Power for TCM 310 radio module
    B_LED_GREEN = 1 << PB4,   // green LED
    B_PROG_MOSI = 1 << PB5,   // MOSI from serial programmer
-   __PROG_MISO = 1 << PB6,   // MISO to   serial programmer (not used)
+   B_PROG_MISO = 1 << PB6,   // MISO to   serial programmer (not used)
    __PROG_SCL  = 1 << PB7,   // SCL  from serial programmer (not used)
+
+#if HARD_UART
    outputs_B   = B_BTEST_OUT
                | B_MOSI
                | B_TCM_POWER
                | B_LED_GREEN
                | B_PROG_MOSI
-   ////        | __PROG_MISO connected to TxD
+  ///          | __PROG_MISO // maybe ed to TxD
                | __PROG_SCL,
+#elif SOFT_UART
+   outputs_B   = B_BTEST_OUT
+               | B_MOSI
+               | B_TCM_POWER
+               | B_LED_GREEN
+               | B_PROG_MOSI
+               | B_PROG_MISO  // soft UART TxD
+               | __PROG_SCL,
+#else
+   outputs_B   = B_BTEST_OUT
+               | B_MOSI
+               | B_TCM_POWER
+               | B_LED_GREEN
+               | B_PROG_MOSI
+               | B_PROG_MISO  // UART txD and PROG_MISO both driven low
+               | __PROG_SCL,
+#endif
    pullup_B  = 0,
 
    D_TCM_RxD   = 1 << PD0,   // RxD from TCM 310 radio module
@@ -216,19 +207,54 @@ enum BOARD_STATUS
    BSTAT_BELOW_INITIAL = 4,
 };
 
-static uint8_t board_status = BSTAT_RESET;
-static uint8_t trend_idx = 0;
-static uint8_t hist_idx = 0;
+#if HARD_UART || SOFT_UART
+static void
+_print_char(uint8_t ch)
+{
+   // update CRC if needed
+   //
+# if ENOCEAN
+   enum { polynom = 0x07 };   // (x^8) + x^2 + x^1 + x^0
+   crc ^= ch;
+   for (uint8_t i = 0; i < 8; i++)
+       {
+         const bool crc_high = crc & 0x80;
+         crc <<= 1;
+         if (crc_high)   crc ^= polynom;
+       }
+# endif
+
+   // transmit the character
+   //
+# if HARD_UART
+   while (!(UCSRA & 1 << UDRE))   ;   // wait for DR empty
+   UDR = ch;
+# else   // SOFT_UART
+   //
+   //             ╔╦═════════════════  stop bit(s)
+   //             ║║     ╔╦══════════  8 data bits
+   //             ║║     ║║     ╔════  start bit
+int16_t bits = (0xFF00 | ch) << 1;
+
+   for (uint8_t j = 0; j < 12; ++j)   // 1 start _ 8 data + 3 stop
+       {
+         if (bits & 1)   SOFT_PORT |=  SOFT_PBIT;
+         else            SOFT_PORT &= ~SOFT_PBIT;
+         bits >>= 1;
+         _delay_loop_1(SOFT_COUNT);
+       }
+
+# endif
+}
+#endif
+
+static uint8_t  board_status = BSTAT_RESET;
+static uint8_t  trend_idx = 0;
+static uint8_t  hist_idx = 0;
 
 static uint16_t batt_result = 0;
 static uint16_t initial_glucose_2 = 0;
-static uint8_t initial_B = 0;
-
-#define get_pin(port, bit)    (PIN  ## port &    port ## _ ## bit ? 0xFF : 0x00)
-#define set_pin(port, bit)    (PORT ## port |=   port ## _ ## bit)
-#define clr_pin(port, bit)    (PORT ## port &= ~ port ## _ ## bit)
-#define output_pin(port, bit) (DDR  ## port |=   port ## _ ## bit)
-#define input_pin(port, bit)  (DDR  ## port &= ~ port ## _ ## bit)
+static uint8_t  initial_B = 0;
 
 //-----------------------------------------------------------------------------
 /// wait for \b milli_secs ms, return time slept (which can be less than
@@ -299,217 +325,20 @@ sleep_ms(uint32_t milli_secs)
 }
 //-----------------------------------------------------------------------------
 #if ENOCEAN
-
-static void
-disable_enocean()
-{
-   // let UART and the TCM finish their transmission
-   //
-   sleep_ms(100);
-
-   // disable UART so that normal GPIO is enabled on the serial TxD pin
-   //
-   UCSRB = 0 << RXCIE
-         | 0 << RXEN
-         | 0 << TXEN;
-
-   // make TxD an output and set it to Low. This is to protect the TCM 310's
-   // RxD from having a high level when its power is switched off
-   //
-   output_pin(D, TCM_TxD);
-   clr_pin(D, TCM_TxD);
-
-   // disconnect the TCM 310 from Vcc (TCM_POWER is active low)
-   //
-   set_pin(B, TCM_POWER);
-
-   // let the TCM 310 elko discharge. Wait long enough so that the power
-   // to the TCM 310 can fully go down.
-   //
-   sleep_ms(10000);
-}
-//-----------------------------------------------------------------------------
-static void
-enable_enocean()
-{
-   // connect the TCM 310 to Vcc (TCM_POWER is active low)
-   //
-   clr_pin(B, TCM_POWER);
-
-   // let the TCM 310 elko charge
-   //
-   sleep_ms(100);
-
-   // enable (only) the transmitter
-   //
-   UCSRB = 0 << RXCIE   // disable Rx interrupt
-         | 0 << RXEN    // disable receiver
-         | 1 << TXEN;   // enable transmitter
-
-   // let TCM 310 start up (takes max. 500 ms)
-   //
-   sleep_ms(600);
-
-   if (id_valid)   return;
-
-   // first enable_enocean() call, determine the TCM 310 enocean ID...
-
-   // enable transmitter, receiver, and receiver interrupts
-   //
-   UCSRB = 1 << RXCIE   // enable Rx interrupt
-         | 1 << RXEN    // enable receiver
-         | 1 << TXEN;   // enable transmitter
-
-static uint8_t RD_BASE_command[] = { 0x55, 0x00, 0x01, 0x00,
-                                     0x05, 0x70, 0x08, 0x38 };
-   for (uint8_t c = 0; c < sizeof(RD_BASE_command); ++c)
-       print_byte(RD_BASE_command[c]);
-
-   rx_idx = 0;
-   clr_pin(B, LED_GREEN);
-   set_pin(D, LED_RED);
-   sei();
-   for (uint8_t t = 0; t < 150; ++t)
-       {
-         _delay_ms(100);
-         if (id_valid)   break;
-         PINB = B_LED_GREEN;   // toggle green LED
-         PIND = D_LED_RED;     // toggle red LED
-       }
-   cli();
-
-   // disable receiver and receiver interrupts, enable transmitter
-   UCSRB = 0 << RXCIE   // disable Rx interrupt
-         | 0 << RXEN    // dusable receiver
-         | 1 << TXEN;   // enable transmitter
-}
-//-----------------------------------------------------------------------------
-static void
-transmit_header(uint8_t dlen, uint8_t olen)
-{
-   enum {
-          SYNC        = 0x55,
-          RADIO_ERP1  = 1
-        };
-
-   print_byte(SYNC);     // sync
-
-crc = 0;
-   print_byte(0);      // upper byte of dlen
-   print_byte(dlen);   // lower byte of dlen
-   print_byte(olen);
-   print_byte(RADIO_ERP1);
-   print_byte(crc);
-}
-//-----------------------------------------------------------------------------
-static void
-transmit_glucose(uint8_t gluco_2)
-{
-   enable_enocean();
-
-   // message has 5 bytes:
-   //
-   // COMMAND,  gluco_2,  battery-high, battery-low, board-status
-   //
-   enum
-      {
-        MESSAGE_LEN = 5,
-
-        // header constants...
-        //
-        DLEN        = 1             // Rorg
-                    + MESSAGE_LEN   // message
-                    + 4             // sender ID
-                    + 1,            // status
-
-        OLEN        = 1             // subtel
-                    + 4             // dest ID
-                    + 1             // dBm
-                    + 1,            // ENCRYPTED
-
-
-        // data constants...
-        //
-        RORG_VLD    = 0xD2,
-        Gluco_VALUE = 0x20,
-        ESTATUS     = 0,
-
-        // Jalu_server uses 0..11
-
-        // optional data constants...
-        //
-        SubTelNum   = 0,
-        DestID      = 0xFF,   // 4 times
-        dBm         = 0xFF,
-        ENCRYPTED   = 0,
-      };
-
-   transmit_header(DLEN, OLEN);
-
-crc = 0;
-   print_byte(RORG_VLD);           // data...
-   print_byte(Gluco_VALUE);        // command
-   print_byte(gluco_2);            // glucose/2
-   print_byte(batt_result >> 8);   // battery high
-   print_byte(batt_result);        // battery low
-   print_byte(board_status);       // dito
-   print_byte(0xFF);
-   print_byte(id2);
-   print_byte(id3);
-   print_byte(id4);
-   print_byte(ESTATUS);
-
-   print_byte(SubTelNum);
-   print_byte(DestID);
-   print_byte(DestID);
-   print_byte(DestID);
-   print_byte(DestID);
-   print_byte(dBm);
-   print_byte(ENCRYPTED);
-   print_byte(crc);
-
-   disable_enocean();
-}
-//-----------------------------------------------------------------------------
-static const uint8_t RD_BASE_response[] =
-   { 0x55, 0x00, 0x05, 0x01, 0x02, 0xDB, 0x00, 0xFF };
-
-ISR(USART0_RX_vect)
-{
-const uint8_t cc = UDR;
-
-   if (!id_valid)
-      {
-        switch(rx_idx)
-           {
-             case 0 ... sizeof(RD_BASE_response) - 1:
-                           if (cc != RD_BASE_response[rx_idx])   rx_idx = -1;
-                           break;
-
-             case 8:  id2 = cc;   break;
-             case 9:  id3 = cc;   break;
-             case 10: id4 = cc;
-                      id_valid = true;
-                      break;
-
-             default: break;
-           }
-             ++rx_idx;
-      }
-}
-#endif // ENOCEAN
+# include "enocean.cc"
+#endif
 //-----------------------------------------------------------------------------
 static void
 init_hardware()
 {
-   // set pins to a preliminary value (0), which will be overridden below
+   // set I/O ports to a preliminary value, which will be overridden below
    //
    DDRA = outputs_A;
    DDRB = outputs_B & ~B_PROG_MOSI;   // make PROG_MOSI an input
    DDRD = outputs_D;
 
    PORTA = pullup_A;
-   PORTB = pullup_B | B_PROG_MOSI;
+   PORTB = pullup_B | B_PROG_MOSI | B_TCM_POWER;
    PORTD = pullup_D;
 
    // CPU clock prescaler: x1
@@ -521,6 +350,7 @@ init_hardware()
    TCCR1A = 0;
    TCCR1B = 0;
 
+#if HARD_UART
    // UART
    //
    enum
@@ -533,14 +363,12 @@ init_hardware()
    UBRRH = BAUD_DIVISOR >> 8;
    UBRRL = BAUD_DIVISOR & 0xFF;
 
-#if USE_UART
-   disable_enocean();
+   disable_enocean();   // empty unless ENOCEAN is #defined as well
    UCSRB = 0 << RXEN | 1 << TXEN;
-#else
-   UCSRB = 0 << RXEN | 0 << TXEN;
-#endif
-
    UCSRC = 1 << USBS | 3 << UCSZ0;   // async, 2 stop, 8 data
+#elif SOFT_UART
+   SOFT_PORT |= SOFT_PBIT;   // set TxD high
+#endif
 
    // set up pins again AFTER all alternate functions have been enabled...
 
@@ -593,149 +421,8 @@ ISR(ANA_COMP_vect)
    batt_result = TCNT1;
 }
 //-----------------------------------------------------------------------------
-static void
-SPI_transfer(const uint8_t * tx, uint8_t * rx, uint8_t length)
-{
-   // this function is called with SSEL=1, SCLK=0, and MOSI=0, and shall
-   // return in the same state
+#include "RFID_functions.cc"
 
-   // start (assert nSSEL)
-   //
-   clr_pin(D, SSEL);
-
-   for (uint8_t byte = 0; byte < length; ++byte)
-       {
-         const uint8_t vtx = tx[byte];
-         uint8_t vrx = 0;
-         for (uint8_t bit = 0x80; bit; bit >>= 1)
-             {
-               if (vtx & bit)   set_pin(B, MOSI);
-               else             clr_pin(B, MOSI);
-               set_pin(D, SCLK);                // ↑
-               _delay_ms(0.1);
-               vrx |= get_pin(D, MISO) & bit;   // sample Rx data
-               clr_pin(D,SCLK);                 // ↓
-               _delay_ms(0.2);
-             }
-         if (rx)   rx[byte] = vrx;
-         _delay_ms(0.5);
-       }
-
-   // start (deassert SSEL)
-   //
-   clr_pin(B, MOSI);
-   set_pin(D, SSEL);
-   sleep_ms(1);
-}
-//-----------------------------------------------------------------------------
-enum   // Table 6-20
-{
-   CONT              = 0x20,         // continuous address mode
-   READ              = 0x40,         // read bit (0 for write)
-   CMD               = 0x80,         // command bit (0 for parameters
-   CMD_idle          = CMD | 0x00,   // direct command: idle
-   CMD_init          = CMD | 0x03,   // direct command: init chip
-   CMD_reset_FIFO    = CMD | 0x0F,   // direct command: reset FIFO
-   CMD_send_with_CRC = CMD | 0x11,   // direct command: send and append CRC
-};
-
-enum Register
-{
-  CHIP_STATE_CONTROL       = 0x00,
-  ISO_CONTROL              = 0x01,
-  ISO_14443B_OPTIONS       = 0x02,
-  ISO_14443A_OPTIONS       = 0x03,
-  TX_TIMER_EPC_HIGH        = 0x04,
-  TX_TIMER_EPC_LOW         = 0x05,
-  TX_PULSE_LENGTH_CONTROL  = 0x06,
-  RX_NO_RESPONSE_WAIT_TIME = 0x07,
-  RX_WAIT_TIME             = 0x08,
-  MODULATOR_CONTROL        = 0x09,
-  RX_SPECIAL_SETTINGS      = 0x0A,
-  REGULATOR_CONTROL        = 0x0B,
-  IRQ_STATUS               = 0x0C,
-  IRQ_MASK                 = 0x0D,   // Collision Pos and Interrupt Mask
-  COLLISION_POSITION       = 0x0E,
-  RSSI_LEVELS              = 0x0F,
-  SPECIAL_FUNCTION         = 0x10,
-  RAM_START_ADDRESS        = 0x11,   // RAM is 6 bytes long (0x11 - 0x16)
-  ADJUSTABLE_FIFO_LEVEL    = 0x14,
-  NFCID                    = 0x17,
-  NFC_TARGET_LEVEL         = 0x18,
-  TEST_SETTINGS_1          = 0x1A,
-  TEST_SETTINGS_2          = 0x1B,
-  FIFO_STATUS              = 0x1C,
-  TX_LENGTH_BYTE_1         = 0x1D,
-  TX_LENGTH_BYTE_2         = 0x1E,
-  FIFO                     = 0x1F,
-};
-//-----------------------------------------------------------------------------
-enum Register_value
-{
-   // register values
-   //
-   CHIP_VCC_3V       = 0x00,
-   CHIP_VCC_5V       = 0x01,
-   CHIP_VCC          = CHIP_VCC_3V,
-
-   OUT_POWER_FULL    = 0x00,
-   OUT_POWER_HALF    = 0x10,
-   OUT_POWER         = OUT_POWER_HALF,
-
-   CHIP_STATE_RF_Off = CHIP_VCC | OUT_POWER,
-   CHIP_STATE_RF_On  = CHIP_STATE_RF_Off | 0x20,  // full power
-
-   ISO_MODE_low      = 0x00,   // low bit rate, one subcarrier, 1(4)
-   ISO_MODE_high     = 0x02,   // high bit rate, one subcarrier, 1(4)
-   ISO_FLAGS_low     = 0x00,   // low data rate
-   ISO_FLAGS_high    = 0x02,   // high data rate
-
-   ISO_MODE = ISO_MODE_high,
-   ISO_FLAGS = ISO_FLAGS_high,
-};
-//-----------------------------------------------------------------------------
-static void
-DirectCommand(uint8_t command)
-{
-   SPI_transfer(&command, 0, 1);
-}
-//-----------------------------------------------------------------------------
-static void
-Reset_FIFO()
-{
-   DirectCommand(CMD_reset_FIFO);
-}
-//-----------------------------------------------------------------------------
-static uint8_t
-read_register(Register reg)
-{
-uint8_t cmd[] = { uint8_t(READ | reg), uint8_t(READ | reg) };
-   SPI_transfer(cmd, cmd, sizeof(cmd));
-   return cmd[1];
-}
-//-----------------------------------------------------------------------------
-static void
-write_register(Register reg, uint8_t value)
-{
-uint8_t cmd[] = { reg, value };
-   SPI_transfer(cmd, 0, sizeof(cmd));
-}
-//-----------------------------------------------------------------------------
-inline void
-init_RFID_reader()
-{
-   DirectCommand(CMD_init);
-   DirectCommand(CMD_idle);
-
-   Reset_FIFO();
-
-   write_register(CHIP_STATE_CONTROL, CHIP_STATE_RF_Off);
-
-   write_register(ISO_CONTROL, 0x00);
-
-   write_register(NFC_TARGET_LEVEL, 0x00);   // fix TI bug
-}
-//-----------------------------------------------------------------------------
 static void
 print_hex1(uint8_t ch)
 {
@@ -752,63 +439,14 @@ print_hex2(uint8_t ch)
 }
 
 #if FANCY_PRINT
-//-----------------------------------------------------------------------------
-static void
-print_hex4(uint16_t ch)
-{
-   print_hex2(ch >> 8);
-   print_hex2(ch);
-}
-//-----------------------------------------------------------------------------
-static void
-print_dec(uint16_t val)
-{
-bool subseq = false;
-uint8_t cc = val / 10000;
-   if (cc)   { print_char('0' + cc);   subseq = true; }
-
-   cc = val / 1000 % 10;
-   if (cc || subseq)   { print_char('0' + cc);   subseq = true; }
-
-   cc = val / 100 % 10;
-   if (cc || subseq)   { print_char('0' + cc);   subseq = true; }
-
-   cc = val / 10 % 10;
-   print_char(cc || subseq ? '0' + cc : ' ');
-   print_char('0' + val % 10);
-}
-//-----------------------------------------------------------------------------
-static void
-_print_string(const char * str, int16_t val = -1)
-{
-   for (uint8_t cc; (cc = pgm_read_byte(str++));)
-       switch(cc)
-          {
-            case 0x80: print_hex2(val);   break;
-#if !ENOCEAN
-            case 0x81: print_hex4(val);   break;
-            case 0x90: print_dec(val);    break;
+#include "print_functions.cc"
 #endif
-            default:   print_char(cc);
-          }
-}
-//-----------------------------------------------------------------------------
-static void
-_error(const char * str, uint16_t line, int16_t val)
-{
-   _print_string(PSTR("*** "), -1);
-   _print_string(str, -1);
-   _print_string(PSTR(" at line "), -1);
-   print_dec(line);
-   if (val != -1)   _print_string(PSTR(" (\x80)"), val);
-   print_char('\n');
-}
-#endif   // not ENOACEAN
+
 //-----------------------------------------------------------------------------
 inline void
 beep(uint8_t repeat, uint8_t ticks_on, uint8_t ticks_off)
 {
-   print_stringv("beep \x90\n", ticks_on);
+// print_stringv("beep \x90\n", ticks_on);
    for (int j = 0; j < repeat; ++j)
       {
         set_pin(D, BEEPER);
@@ -911,8 +549,8 @@ const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
       {
         hist_idx  = rx_data[6];    // mirrored!
         trend_idx = rx_data[5];    // mirrored!
-        print_stringv("  trend_idx:: #\x90", trend_idx);
-        print_stringv(", hist_idx:: #\x90\n", hist_idx);
+        print_stringv("  trend_idx: #\x90",  trend_idx);
+        print_stringv(", hist_idx: #\x90\n", hist_idx);
         return;
       }
 
@@ -1091,7 +729,7 @@ battery_test()
         | 0 << ACIC    // DO NOT enable input capture
         | 2 << ACIS0   // interrupt on falling edge
         ;
-   sleep_ms(1);         // wait 1 ms for bandgap reference to start up
+   _delay_ms(1);       // wait 1 ms for bandgap reference to start up
 
    TCCR1A = 0;
    TCCR1B = 1 << CS10;       // clock source: io-clk
@@ -1188,8 +826,6 @@ uint16_t aver_2 = 0;
    for (uint8_t j = 3; j < 13; ++j)   aver_2 += gluco2_vec[j];
    aver_2 /= 10;
 
-   transmit_glucose(aver_2);
-
    print_stringv("glucose: \x90\n", 2*aver_2);   // aver_2 is halved!
 
    if (initial_glucose_2 == 0)   // first glucose measurement
@@ -1218,6 +854,11 @@ uint16_t aver_2 = 0;
            }
       }
 
+   // transmit_glucose() also transmits board_status, so that we must not
+   // call it earlier.
+   //
+   transmit_glucose(aver_2);
+
    return 1000*int32_t(NORMAL_WAIT_SECONDS);
 }
 //-----------------------------------------------------------------------------
@@ -1228,10 +869,11 @@ main(int, char *[])
 
    init_RFID_reader();
 
+#if HARD_UART || SOFT_UART
 const uint8_t calib = eeprom_read_byte(0);
-   if (calib != 0xFF)   OSCCAL = calib;   // explicit calibration
-// else                 OSCCAL = 0x47;    // good for  9600 Baud at 4 MHz
-   else                 OSCCAL = 0x3B;    // good for 57600 Baud at 4 MHz
+   if (calib != 0xFF)   OSCCAL = calib;        // calibration override
+   else                 OSCCAL = CPU_CALIB;
+#endif
 
    // transmit a glucose value of 0 as a restart indication and to
    // inform receiver(s) about the battery status.

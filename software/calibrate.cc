@@ -1,5 +1,28 @@
+/*
+    Copyright (C) 2018  Dr. Jürgen Sauermann
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/*
+  This is a helper progrsam for calibrating the internal RC oscillator
+  of an Atmel 4313.
+ */
+
 #define F_CPU 4000000
 #define F_IO  F_CPU
+#define SOFT_BAUD 9600
 
 #include <util/delay.h>
 #include <avr/io.h>
@@ -12,6 +35,10 @@
 #error "__AVR_ATtiny4313__ is not defined !!!"
 #endif
 
+enum { SOFT_COUNT = (F_CPU / SOFT_BAUD)/4 - 2 };
+
+static bool soft_mode = false;
+static uint8_t initial_calib = 0;
 static uint16_t batt_result = 0;
 
 enum
@@ -30,12 +57,13 @@ enum
    B_TCM_POWER = 1 << PB3,   // Power for TCM 310 radio module
    B_LED_GREEN = 1 << PB4,   // green LED
    __PROG_MOSI = 1 << PB5,   // MOSI from serial programmer (not used)
-   __PROG_MISO = 1 << PB6,   // MISO to   serial programmer (not used)
+   B_PROG_MISO = 1 << PB6,   // MISO to   serial programmer or soft UART Tx
    __PROG_SCL  = 1 << PB7,   // SCL  from serial programmer (not used)
    outputs_B1  = B_MOSI
                | B_TCM_POWER
                | B_LED_GREEN
-               | B_BTEST_OUT,
+               | B_BTEST_OUT
+               | B_PROG_MISO,
    outputs_B   = outputs_B1 | B_BTEST_OUT,
    pullup_B  = ~ outputs_B,
 
@@ -70,7 +98,7 @@ init_hardware()
    DDRD = outputs_D;
 
    PORTA = pullup_A;
-   PORTB = pullup_B;
+   PORTB = pullup_B | B_PROG_MISO;
    PORTD = pullup_D;
 
    // CPU clock prescaler: x1
@@ -105,7 +133,7 @@ init_hardware()
    // see 10.1.1 Configuring the Pin
    //
    PORTA = pullup_A;
-   PORTB = pullup_B;
+   PORTB = pullup_B | B_PROG_MISO | B_TCM_POWER;
    PORTD = pullup_D;
 }
 //-----------------------------------------------------------------------------
@@ -118,81 +146,34 @@ ISR(ANA_COMP_vect)
    batt_result = TCNT1;
 }
 //-----------------------------------------------------------------------------
-uint32_t
-sleep_ms(uint32_t milli_secs)
+static void
+hard_char(uint8_t ch)
 {
-  enum {
-          // CTC frequencies after prescaler
-          //
-          PRE_1 = 1,   // prescaler: ÷1
-          PRE_2 = 5,   // prescaler: ÷1024
-
-          F_CTC_1   =  F_IO,          // 4 MHz,   Tmax = 16.384 msec
-          F_CTC_2   =  F_IO / 1024,   // 3906 Hz, Tmax = 16.777 sec
-
-          WGmode    = 4,              // alias CTC mode, p. 113
-          WGmode_A  = (WGmode & 0x03) << WGM10,
-          WGmode_B  = (WGmode >> 2)   << WGM12,
-        };
-   // timer in CRC mode with 20 ms interval
-   //
-   // WGM13..10 is 0100 p. 113, (split between TCCR1B and TCCR1A)
-   TCCR1A = 0 << COM1A0   // normal mode, OC1A disconnected, see p. 111
-          | 0 << COM1B0   // normal mode, OC1B disconnected, see p. 111
-          | WGmode_A      // WGM11:WGM10 = 00  p. 111
-          ;
-
-   if (milli_secs < 16)   // short sleep
-      {
-        TCCR1B = WGmode_B        // WGM13:WGM12 = 01  p. 113
-               | PRE_1 << CS10   // prescaler: io-clk
-               ;
-
-        OCR1A = F_CTC_1 * milli_secs / 1000;
-      }
-   else
-      {
-        if (milli_secs > 16000)   // very long sleep
-           {
-             milli_secs = 16000;
-           }
-
-        TCCR1B = WGmode_B        // WGM13:WGM12 = 01  p. 113
-               | PRE_2 << CS10   // prescaler: io-clk
-               ;
-
-        OCR1A = F_CTC_2 * milli_secs / 1000;
-      }
-
-   TCNT1 = 0;
-   TIFR  = 1 << OCIE1A;   // clear old interrupts
-   TIMSK = 1 << OCIE1A;   // enable interrupts
-
-   set_sleep_mode(SLEEP_MODE_IDLE);
-
-   sleep_enable();
-   sei();
-   sleep_cpu();
-   cli();
-   sleep_disable();
-
-   TIMSK = 0;             // disable timer interrupts
-   return milli_secs;
+   while (!(UCSRA & 1 << UDRE))   ;   // wait for DR empty
+   UDR = ch;
 }
 //-----------------------------------------------------------------------------
-inline void
-beep(uint16_t ms)
+static void
+soft_char(uint8_t ch, volatile uint8_t & port, uint8_t bit)
 {
-   set_pin(D, BEEPER);
-   sleep_ms(ms);
-   clr_pin(D, BEEPER);
+   //             ╔╦═════════════════  stop bit(s)
+   //             ║║     ╔╦══════════  8 data bits
+   //             ║║     ║║     ╔════  start bit
+int16_t bits = (0xFF00 | ch) << 1;
+   for (uint8_t j = 0; j < 12; ++j)   // 1 start _ 8 data + 3 stop
+       {
+         if (bits & 1)   port |= bit;
+         else            port &= ~bit;
+         bits >>= 1;
+         _delay_loop_1(SOFT_COUNT);
+       }
 }
 //-----------------------------------------------------------------------------
 static void
 print_char(uint8_t ch)
 {
-   while (!(UCSRA & 1 << UDRE))   ;   // wait for DR empty
-   UDR = ch;
+   if (soft_mode)   soft_char(ch, PORTB, B_PROG_MISO);
+   else             hard_char(ch);
 }
 //-----------------------------------------------------------------------------
 static void
@@ -210,7 +191,7 @@ print_hex2(uint8_t ch)
    print_hex1(ch);
 }
 //-----------------------------------------------------------------------------
-static void
+inline void
 print_hex4(uint16_t ch)
 {
    print_hex2(ch >> 8);
@@ -218,22 +199,18 @@ print_hex4(uint16_t ch)
 }
 //-----------------------------------------------------------------------------
 static void
-print_dec(uint16_t val)
+print_dec(uint32_t val)
 {
-bool subseq = false;
-uint8_t cc = val / 10000;
-   if (cc)   { print_char('0' + cc);   subseq = true; }
+char buf[10];
+uint8_t plen = 1;
 
-   cc = val / 1000 % 10;
-   if (cc || subseq)   { print_char('0' + cc);   subseq = true; }
+   for (uint8_t j = 0; j < sizeof(buf);)
+       {
+         if ((buf[j++] = val % 10))   plen = j;
+         val /= 10;
+       }
 
-   cc = val / 100 % 10;
-   if (cc || subseq)   { print_char('0' + cc);   subseq = true; }
-
-   cc = val / 10 % 10;
-   if (cc || subseq)   { print_char('0' + cc);   subseq = true; }
-
-   print_char('0' + val % 10);
+   while (plen)   print_char('0' + buf[--plen]);
 }
 //-----------------------------------------------------------------------------
 static void
@@ -249,8 +226,8 @@ _print_string(const char * str, int16_t val = -1)
 }
 #define print_string(str)       _print_string(PSTR((str)), -1)
 #define print_stringv(str, val) _print_string(PSTR((str)), val)
-
-void
+//-----------------------------------------------------------------------------
+inline void
 battery_test()
 {
    ACSR = 0 << ACD     // DO NOT disable comparator
@@ -260,7 +237,7 @@ battery_test()
         | 0 << ACIC    // DO NOT enable input capture
         | 2 << ACIS0   // interrupt on falling edge
         ;
-   sleep_ms(1);         // wait 1 ms for bandgap reference to start up
+   _delay_ms(1);         // wait 1 ms for bandgap reference to start up
 
    TCCR1A = 0;
    TCCR1B = 1 << CS10;       // clock source: io-clk
@@ -279,7 +256,7 @@ battery_test()
 
    TCNT1 = 0;
    sei();
-   _delay_ms(1);          // DO NOT sleep_ms() !
+   _delay_ms(1);
    cli();
 
    ACSR = 1 << ACD     // DO     disable comparator
@@ -296,76 +273,60 @@ battery_test()
    output_pin(B, BTEST_OUT);   // BTEST_OUT direction = out
 
    clr_pin(B, BTEST_OUT);      // drive AIN0 low
-   sleep_ms(10);
+   _delay_ms(10);
    set_pin(B, BTEST_OUT);      // drive AIN0 high
-   sleep_ms(10);
+   _delay_ms(10);
    clr_pin(B, BTEST_OUT);      // drive AIN0 low
-   sleep_ms(10);
+   _delay_ms(10);
    set_pin(B, BTEST_OUT);      // drive AIN0 high
-   sleep_ms(30);
+   _delay_ms(30);
    clr_pin(B, BTEST_OUT);      // drive AIN0 low
 }
 //-----------------------------------------------------------------------------
-//
-// one pass, return the number of ms to sleep after this pass
-uint16_t
-doit(uint16_t j, uint8_t initial_calib)
+void
+doit()
 {
-   OSCCAL = j & 0x7F;
-
+const uint8_t * e = 0;
    battery_test();
-
-   print_string("OSCCAL=");
-   print_hex2(OSCCAL);
-   print_string(", initial OSCCAL=");
-   print_hex2(initial_calib);
-   print_string(" j=");
-   print_hex4(j);
-   print_string(", battery=");
-   print_dec(batt_result);
-   print_char('\n');
-
-   if (j & 1)   set_pin(D, LED_RED);
-   else         clr_pin(D, LED_RED);
-
-   return 100;
+   print_string("\n\nF_CPU=");          print_dec(F_CPU);
+   print_string(", soft_mode=");        print_dec(soft_mode);
+   print_string(", soft_count=");       print_dec(SOFT_COUNT);
+   print_string(", OSCCAL=");           print_hex2(OSCCAL);
+   print_string(", battery=");          print_dec(batt_result);
+   print_string(", initial OSCCAL=");   print_hex2(initial_calib);
+   print_string(", eeprom=");
+   for (uint8_t j = 0; j < 5; ++j)
+       {
+         print_hex2(eeprom_read_byte(e++));
+         print_string(" ");
+       }
+   print_string("...\n");
 }
 //-----------------------------------------------------------------------------
 int
 main(int, char *[])
 {
+   initial_calib = OSCCAL;
+// OSCCAL = 0x26;   // good for 4 MHz and 9600 baud
+
    init_hardware();
 
-const uint8_t initial_calib = eeprom_read_byte(0);
-   if (initial_calib != 0xFF)
-      {
-        OSCCAL = initial_calib;   // explicit calibration
-        sleep_ms(500);
-        print_string("\n\neeprom calibration byte: 0x");
-        print_hex2(initial_calib);
-        print_string("...\n\n");
-      }
+   _delay_ms(200);
+   print_string("\n\neeprom[0] (calibration byte): 0x");
+   print_hex2(eeprom_read_byte(0));
+   print_string("...\n\n");
 
-
-// OSCCAL = 0x47;   // good for 4 MHz and 9600 baud
-   OSCCAL = 0x3B;   // good for 4 MHz and 57600 baud
-
-   for (uint16_t j = 0; j < 10; ++j)
-       {
-         clr_pin(B, LED_GREEN);
-         set_pin(D, LED_RED);
-         sleep_ms(500);
-         clr_pin(D, LED_RED);
-         set_pin(B, LED_GREEN);
-         sleep_ms(300);
-       }
-
+   soft_mode = true;
    for (;;)
-   for (uint16_t j = 0; j < 128; ++j)
        {
-//       dump_registers();
-         const uint16_t wait = doit(j, initial_calib);
-         sleep_ms(wait);
+         PIND = D_LED_RED;   // toggle red LED
+
+         for (uint8_t cal = 0; cal < 128; ++cal)
+             {
+               OSCCAL = cal;
+               _delay_ms(10);
+               doit();
+             }
        }
 }
 //-----------------------------------------------------------------------------
