@@ -1,0 +1,73 @@
+The OmFLA device is used as follows.
+
+1. Power ON
+===========
+
+The device is powered on by moving the On/Off switch away from the LEDs. The
+first thing that the device does after power ON is a battery test. The result
+of the test is indicated by 1 (battery low) to 5 (battery full) long beeps.
+
+The OmFLA device cannot know which battery size you are using, and therefore
+you can adjust the 'enum Battery_beeps' in software/user_defined_parameters.hh
+to match your battery.
+
+Right after the battery test the OmFLA device attempts a first sensor read. The
+first read usually fails, which is indicated by 3 short beeps. The device then
+enters an endless loop.
+
+2. The Endless Loop
+===================
+
+At the start of endless loop the red and/or green LEDs blink 3 times as to
+indicate the state of the device like this:
+
+State    LED pattern             Meaning
+-------------------------------------------------------------
+  0      red   - red   - red     The device was powered on
+  3      red   - green - green   The last read of the sensor has failed
+  7      green - green - green   The Initial glucose reading has succeeded
+  6      green - green - red     Glucose level is above the initial level
+  4      green - red   -  red    Glucose level is below the initial level
+-------------------------------------------------------------
+
+See also 'enum BOARD_STATUS' in software/freestyle.cc.
+
+Next, the OmFLA device attempts to read the Freestyle Libre Sensor. If that
+fails, most likely because no sensor in located close to the OmFLA device,
+then the OmFLA device issues 3 short beeps and tries again after 2 Minutes.
+
+If the sensor succeeds in reading the sensor then OmFLA device decides if it
+shall raise an alarm. An alarm is indicated by long beeps until the alarm
+condition ceases of the OmFLA device is switched off. At this point you
+should should turn off the device and measure your glucose level by other
+means, because the OmFLA device is not very precise. While the alarm is
+raised, i.e. while the device beeps, one of the LEDs is permanently on: the
+red LED indicates a high glucose value, while the green LED indicates a low
+glucose values.
+
+High means either a glucose level above an absolute value, or a significant
+increase of the glucose level since the device was powered on. Likewise,
+low means either a glucose level below an absolute value, or a significant 
+decrease of the glucose level since the device was powered on. The absolute
+and relative (compared to the glucose level when the OmFLA device was switched
+on) glucose levels at which an alarm is being raised, can be configured by
+the user in file software/user_defined_parameters.hh.
+
+It is important to turn off the device after an alarm has been raised, because
+turning the device on again then causes the device to start with a new initial
+glucose level is stored in the device. Since the OmFLA device does not
+calibrate the sensors are the RELATIVE_HIGH and RELATIVE_LOW more reliable
+than ABSOLUTE_HIGH and ABSOLUTE_LOW, and powering the OmFLA device off and
+on again is an important step to keep the device up to date.
+
+3. Charging the battery
+=======================
+
+The OmFLA device is powered from a battery of your choice, typically a flat
+Lithium Polymer battery that has its own protection circuitry. Such batteries
+can be connected directly to a USB port or charger via J15. For details, see
+hardware/README.Connector-J15. Care must be taken that the voltage on J15 does
+not exceed 5 Volt.
+
+A fresh 700 mAH battery (as used for cordless phones) lasts several nights.
+
