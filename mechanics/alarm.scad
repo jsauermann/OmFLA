@@ -2,7 +2,7 @@
 // variables that may be changed by the user
 DEBUG  = 0;   // debug mode
 COVER  = 0;   // print the cover instead of the body
-BUCKLE = 0;   // print the body with left and right belt loops
+BUCKLE = 1;   // print the body with left and right belt loops
 
 // variables that ahould not be changed by the user
 
@@ -48,11 +48,6 @@ pcb_guard_y1 = box_y_red - pcb_guard_h;
 pcb_guard_y2 = box_y_red + red_pcb_h + tolerance2;
 pcb_guard_y3 = box_y_green - pcb_guard_h;
 pcb_guard_y4 = box_y_green + green_pcb_h + tolerance2;
-
-cover_flap_y1 = pcb_guard_y2 + tolerance4;
-cover_flap_y2 = pcb_guard_y3 - tolerance4 - pcb_guard_h;
-cover_flap_h  = cover_flap_y2 - cover_flap_y1;
-flap_l = 15;
 
 // the 2D profile of the box...
 
@@ -140,18 +135,6 @@ module box_3D()
    translate([box_w_o/2, 0, 20])
    rotate([-90, 0, 0])
    cylinder(h = 5, r = sensor_radius + 1, $fn = 90);
-
-   // left snap-in wedge
-   //
-   translate([box_thickness, 9.6, 42])
-   rotate([0, -90, -90])
-   wedge_3D();
-
-   // right snap-in wedge
-   //
-   translate([box_w_o - box_thickness, 18.5, 42])
-   rotate([0, -90, 90])
-   wedge_3D();
 }
 
 /// the box with cutouts for the sensor and the beeper
@@ -206,27 +189,27 @@ module main_body()
 // the cover for the box before rounding its edges
 module cover_3D()
 {
+   // base plate
+   //
    cube([box_w_o, box_h_o, box_thickness]);
 
+   // guard next to green PCB
+   //
    translate([5, box_thickness, box_thickness])
-      cube([box_w_o - 10, 2, 2]);
+      cube([box_w_o - 10, 2, 5]);
+
+   // guard next to red PCB
+   //
    translate([5, box_h_o - box_thickness - 2, box_thickness])
-      cube([box_w_o - 10, 2, 2]);
-
-   translate([box_thickness, cover_flap_y1, box_thickness])
-      cube([2, cover_flap_h, flap_l]);
-
-   translate([box_w_o - box_thickness - 2, cover_flap_y1, box_thickness])
-      cube([2, cover_flap_h, flap_l]);
-
+      cube([box_w_o - 10, 2, 5]);
 }
 
 module cover_3D_cutout()
 {
-switch_x = 5;
 switch_w = 11;
-switch_y = box_y_green + 1.0;
-switch_h = 4;
+switch_h = 7;
+switch_x = 5.5;
+switch_y = box_y_green + 1.5;
 
 led_dia = 3.5;
 led_radius = 0.5 * led_dia;
@@ -237,10 +220,10 @@ red_led_y = box_y_green - led_radius;
 green_led_x = red_led_x + 5.12;
 green_led_y = red_led_y;   // center
 
-prog_x = green_led_x + 3.3;
-prog_w = 8.62 + tolerance2;
-prog_y = box_y_green - 3.1;
+prog_w = 10.24 + tolerance2;
 prog_h = 6.1;
+prog_x = green_led_x + 1.3;
+prog_y = box_y_green - 2.1;
 
    difference()
       {
@@ -300,23 +283,6 @@ rnd = 1;
       }
 }
 
-/// a wedge for snap-in of the cover
-module wedge_2D()
-{
-l = 30;
-h = 2.2;
-
-   polygon([[0, 0], [l, 0], [0, h]]);
-}
-
-module wedge_3D()
-{
-   linear_extrude(height = pcb_dist0 - 4,
-                  center = false,
-                  convexity = 2,
-                  twist = 0) wedge_2D();
-}
-
 module main_cover()
 {
    intersection()
@@ -324,13 +290,6 @@ module main_cover()
         cover_3D_cutout();
         rounded_block(1);
       }
-}
-
-module snap_out_hole()
-{
-   translate([-30, 14, 41])
-   rotate([0, 90, 0])
-   cylinder(h = 100, r = 1, $fn = 20);
 }
 
 module main_body_and_buckle()
@@ -353,17 +312,12 @@ module main_body_and_buckle()
       }
 }
 
-/// the body or the cover of the box. Uncomment onbe of the two lines below
+/// either the cover or the body of the box.
 
 if (COVER)   main_cover();
 else         difference()
    {
      if (BUCKLE)   main_body_and_buckle();
      else          main_body();
-
-     // a hole at the end of the snap-in flap, so that the cover
-     // can be released when snapped in. The cover side of the snap-in
-     // mechanism is currently missing, though.
-     snap_out_hole();
    }
 
