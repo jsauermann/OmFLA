@@ -407,7 +407,7 @@ if (UPPER)
 
    // narrow flap (left)
    //
-   translate([box_thickness,
+   translate([box_thickness + flap_h,
               0.5*(box_h_o - flap_w),
               tb_cut_z])   flap2(1);
 
