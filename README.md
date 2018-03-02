@@ -42,3 +42,6 @@ functionality, and the cost of the components for the prototype were well
 below US-$ 50.00 (including the RFID reader, but excluding the PCB and the
 optional TCM 310 radio transceiver).
 
+We are offering OmFLA PCBs to diabetes self aid groups and to individuals suffering
+from diabetes at roughly our purchase price + shipping, please send an email to
+omfla@jürgen-sauermann.de for details.
