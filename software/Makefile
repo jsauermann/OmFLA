@@ -17,14 +17,8 @@ PART = attiny4313
 ################################################33
 # FUSE selection...
 #
-FUSEL = 0xA2   # internal 4 MHz oscillator ÷1
+FUSEL = 0xA2 # internal 4 MHz oscillator ÷1
 FUSEL_DESCR = internal 4 MHz oscillator ÷1
-
-################################################33
-# CALIBRATION selection...
-#
-# CALIB = 0x47# for 9600 Baud
-  CALIB = 0x3B# for 57600 Baud ~ 56.8 kHz
 
 TOOLS = /usr/lib/avr/bin
 CXX = $(TOOLS)/avr-g++ -mmcu=$(PART)
@@ -32,6 +26,16 @@ CXX_FLAGS = -Os -I /usr/lib/avr/include -Wall -Werror -std=c++11
 OBJDUMP = $(TOOLS)/avr-objdump
 OBJCOPY = $(TOOLS)/avr-objcopy
 DUDE = $(TOOLS)/avrdude -p $(PART) -c $(PROGRAMMER)
+
+################################################33
+# user preferences (as specified in file user_defined_parameters.hh)
+#
+AHIGH = $(shell grep -v '^//' user_defined_parameters.hh | grep ABSOLUTE_HIGH | awk '{print $$3}')
+ALOW = $(shell grep -v '^//' user_defined_parameters.hh | grep ABSOLUTE_LOW | awk '{print $$3}')
+RHIGH = $(shell grep -v '^//' user_defined_parameters.hh | grep RELATIVE_HIGH | awk '{print $$3}')
+RLOW = $(shell grep -v '^//' user_defined_parameters.hh | grep RELATIVE_LOW | awk '{print $$3}')
+SLOPE = $(shell grep -v '^//' user_defined_parameters.hh | grep SENSOR_SLOPE | awk '{print $$3}')
+OFFSET = $(shell grep -v '^//' user_defined_parameters.hh | grep SENSOR_OFFSET | awk '{print $$3}')
 
 # target variants:
 #
@@ -47,15 +51,18 @@ all:	beeper_test.hex   \
 
 help:
 	@echo "make targets:"
-	@echo "    all:          compile files"
+	@echo "    all:          compile source files"
 	@echo "    clean:        remove generated files"
-	@echo "    flash:        make all, then flash device"
-	@echo "    flash_cal:    make all, then flash calibration program"
+	@echo "    flash_nod:    all + flash the no-debug version of freestyle.cc"
+	@echo "    flash_deb:    all + flash the debug version of freestyle.cc"
+	@echo "    flash_eno:    all + flash the encocean version of freestyle.cc"
+	@echo "    flash_beep:   all + flash the beeper test program"
+	@echo "    flash_cal:    all + flash the CPU calibration program"
 	@echo "    signature:    read and show device signature"
 	@echo "    fusel:        read and show low fuse"
-	@echo "    wfusel:       write low fuse ($(FUSEL) = $(FUSEL_DESCR))"
-	@echo "    eeprom:       read and show eeprom"
-	@echo "    eeprom0:      write eeprom calibration byte ($(CALIB))"
+	@echo "    wfusel:       write low fuse ($(FUSEL)= $(FUSEL_DESCR))"
+	@echo "    eeprom:       read and show the device EEPROM"
+	@echo "    weeprom:      write eeprom.data to device EEPROM"
 	@echo "    calibration:  read and show calibration values"
 	@echo "    reset:        reset device (pulse)"
 	@echo
@@ -68,13 +75,15 @@ beeper_test.elf: beeper_test.cc Makefile
 calibrate.elf: calibrate.cc Makefile
 	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) $< -o $@
 
-freestyle_deb.elf: freestyle.cc RFID_functions.cc print_functions.cc Makefile
+COMMON = freestyle.cc RFID_functions.cc user_defined_parameters.hh
+
+freestyle_deb.elf: $(COMMON) print_functions.cc Makefile
 	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) -D MODE=0 $< -o $@
 
-freestyle_eno.elf: freestyle.cc RFID_functions.cc enocean.cc Makefile
+freestyle_eno.elf: $(COMMON) enocean.cc Makefile
 	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) -D MODE=1 $< -o $@
 
-freestyle_nod.elf: freestyle.cc RFID_functions.cc Makefile
+freestyle_nod.elf: $(COMMON) Makefile
 	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) -D MODE=2 $< -o $@
 
 %.lss: %.elf
@@ -92,24 +101,27 @@ clean:
 
 # device programming (flashing) targets...
 #
-flash_deb:	freestyle_deb.hex
+flash_deb:	freestyle_deb.hex eeprom.data
 	$(DUDE) -U flash:w:$<
+	$(DUDE) -U eeprom:w:eeprom.data:r
 	true
 
-flash_eno:	freestyle_eno.hex
-	$(DUDE) -U flash:w:$<
+flash_eno:	freestyle_eno.hex eeprom.data
+	$(DUDE) -U flash:w:$<:i
+	$(DUDE) -U eeprom:w:eeprom.data:r
 	true
 
-flash_nod:	freestyle_nod.hex
-	$(DUDE) -U flash:w:$<
+flash_nod:	freestyle_nod.hex eeprom.data
+	$(DUDE) -U flash:w:$<:i
+	$(DUDE) -U eeprom:w:eeprom.data:r
 	true
 
 flash_cal:	all
-	$(DUDE) -U flash:w:calibrate.hex
+	$(DUDE) -U flash:w:calibrate.hex:i
 	true
 
 flash_beep:	all
-	$(DUDE) -U flash:w:beeper_test.hex
+	$(DUDE) -U flash:w:beeper_test.hex:i
 	true
 
 signature:
@@ -121,8 +133,20 @@ fusel:
 eeprom:
 	$(DUDE) -U eeprom:r:-:h
 
-eeprom0:
-	$(DUDE) -U eeprom:w:$(CALIB):m
+weeprom: eeprom.data
+	$(DUDE) -U eeprom:w:eeprom.data:r
+
+# eeprom.data is a motorola S-record file with the following bytes:
+#
+# EEPROM
+# Address   dec   hex   explanation
+# -------------------------------
+# [0]       255   FF  Atmel CPU frequency calibration (0xFF means none)
+# [1]       130   82  Freestyle sensor slope
+# [2]       -30   EC  Freestyle sensor offset
+#
+eeprom.data:	user_defined_parameters
+	./user_defined_parameters > $@
 
 calibration:
 	$(DUDE) -U calibration:r:-:h
@@ -142,4 +166,7 @@ wfusel:
 reset: 
 	$(DUDE) -Ereset
 	$(DUDE) -Enoreset,vcc
+
+user_defined_parameters: user_defined_parameters.cc user_defined_parameters.hh
+	g++ -o $@ $<
 

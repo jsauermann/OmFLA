@@ -86,10 +86,12 @@ enum { SOFT_COUNT = (F_CPU / SOFT_BAUD)/4 - 2 };
 
 #include <avr/io.h>
 #include <avr/eeprom.h>
-#include <avr/pgmspace.h>
 #include <avr/interrupt.h>
+#include <avr/pgmspace.h>
 #include <avr/sleep.h>
 #include <util/delay.h>
+
+User_defined_parameters user_params;
 
 #ifndef __AVR_ATtiny4313__
 # error "__AVR_ATtiny4313__ is not defined !!!"
@@ -444,15 +446,15 @@ print_hex2(uint8_t ch)
 
 //-----------------------------------------------------------------------------
 inline void
-beep(uint8_t repeat, uint8_t ticks_on, uint8_t ticks_off)
+beep(uint8_t repeat, uint16_t ms_on, uint8_t ms_off)
 {
-// print_stringv("beep \x90\n", ticks_on);
+// print_stringv("beep \x90\n", ms_on);
    for (int j = 0; j < repeat; ++j)
       {
         set_pin(D, BEEPER);
-        sleep_ms(10 * ticks_on);
+        sleep_ms(ms_on);
         clr_pin(D, BEEPER);
-        sleep_ms(10 * ticks_off);
+        sleep_ms(ms_off);
       }
 }
 //-----------------------------------------------------------------------------
@@ -479,12 +481,13 @@ uint8_t rx_data[sizeof(fifo)];
 
 /// return glucose in mg% ÷ 2
 static uint8_t
-gluco(int rx_offs)
+gluco2(uint8_t rx_offset)
 {
-const int h = rx_data[rx_offs + 3];
-const int l = rx_data[rx_offs + 2];
-const uint16_t val = h << 8 | l;
-const int glucose(SENSOR_OFFSET + (val & 0x0FFF)*(0.001*SENSOR_SLOPE));
+const uint16_t h = rx_data[rx_offset + 3] & 0x0F;   // upper 4 bits
+const uint16_t l = rx_data[rx_offset + 2];          // lower 8 bits
+const uint32_t raw_sensor = h << 8 | l;           // total 12 bits
+const uint16_t glucose = user_params.sensor_offset
+                       + ((raw_sensor * user_params.sensor_slope) / 1000);
    return glucose >> 1;
 }
 
@@ -558,24 +561,24 @@ const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
       {
         case 1: // AAAA-BBBB-CCCC-AAAA
                 print_string(" ABCA\n");
-                gluco2_vec[gluco_idx++] = gluco(2);   // FIFO is mirrored!
+                gluco2_vec[gluco_idx++] = gluco2(2);   // FIFO is mirrored!
                 break;
 
         case 2: // CCCC-AAAA-BBBB-CCCC
                 print_string(" CABC\n");
-                gluco2_vec[gluco_idx++] = gluco(6);   // FIFO is mirrored!
-                gluco2_vec[gluco_idx++] = gluco(0);   // FIFO is mirrored!
+                gluco2_vec[gluco_idx++] = gluco2(6);   // FIFO is mirrored!
+                gluco2_vec[gluco_idx++] = gluco2(0);   // FIFO is mirrored!
                 break;
 
         case 0: // BBBB-CCCC-AAAA-BBBB
                 print_string(" BCAB\n");
-                gluco2_vec[gluco_idx++] = gluco(4);   // FIFO is mirrored!
+                gluco2_vec[gluco_idx++] = gluco2(4);   // FIFO is mirrored!
       }
 
    return;
 
 error_out:
-   beep(3, 20, 10);
+   beep(3, 200, 100);
 
    if ((block % 3) == 1)   gluco2_vec[gluco_idx++] = 0;   // 2 values per block
    gluco2_vec[gluco_idx++] = 0;                       // 1 more gluco2_vec
@@ -781,16 +784,20 @@ doit(uint16_t j)
    LED_01(board_status);
 
    battery_test();
+
+   // battery_test() sets batt_result to roughlu 800 (full battery) ...
+   // 1200 (empty battery). To save bytes we scale batt_result down to uint8_t.
    if (j == 0)   // power ON
       {
+        const uint8_t br = batt_result >> 3;
         uint8_t battery_beeps = 5;
 
-        if      (batt_result >= BATTERY_1)   battery_beeps = 1;
-        else if (batt_result >= BATTERY_2)   battery_beeps = 2;
-        else if (batt_result >= BATTERY_3)   battery_beeps = 3;
-        else if (batt_result >= BATTERY_4)   battery_beeps = 4;
+        if      (br >= user_params.battery_1)   battery_beeps = 1;
+        else if (br >= user_params.battery_2)   battery_beeps = 2;
+        else if (br >= user_params.battery_3)   battery_beeps = 3;
+        else if (br >= user_params.battery_4)   battery_beeps = 4;
 
-        beep(battery_beeps, 20, 20);
+        beep(battery_beeps, 200, 200);
       }
 
    print_stringv("j=\x90", j);
@@ -814,7 +821,7 @@ bool errors;
       {
          board_status = BSTAT_RFID_ERROR;
          transmit_glucose(0);
-         beep(3, 10, 10);
+         beep(3, 100, 100);
          return 1000*int32_t(ERROR_WAIT_SECONDS);
       }
 
@@ -840,7 +847,7 @@ uint16_t aver_2 = 0;
          || aver_2 > (initial_glucose_2 + RELATIVE_HIGH_2))
            {
              set_pin(D, LED_RED);      // red LED on
-             beep(10, 50, 20);
+             beep(10, 500, 200);
            }
       }
    else   // glucose has decreased
@@ -850,7 +857,7 @@ uint16_t aver_2 = 0;
          || aver_2 < (initial_glucose_2 - RELATIVE_LOW_2))
            {
              set_pin(B, LED_GREEN);    // green LED on
-             beep(10, 50, 20);
+             beep(10, 500, 200);
            }
       }
 
@@ -865,12 +872,19 @@ uint16_t aver_2 = 0;
 int
 main(int, char *[])
 {
+   // read user definable parameters from EEPROM
+   {
+     uint8_t * up = (uint8_t *)&user_params;
+     for (uint16_t e = 0; e < sizeof(user_params); ++e)
+         up[e] = eeprom_read_byte((const uint8_t *)e);
+   }
+
    init_hardware();
 
    init_RFID_reader();
 
 #if HARD_UART || SOFT_UART
-const uint8_t calib = eeprom_read_byte(0);
+const uint8_t calib = user_params.oscillator_calibration;
    if (calib != 0xFF)   OSCCAL = calib;        // calibration override
    else                 OSCCAL = CPU_CALIB;
 #endif
