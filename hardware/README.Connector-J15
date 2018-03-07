@@ -1,31 +1,42 @@
 
 Looking onto the front of the green micro-controller PCB, you will see the
-2x3 pin header J15. (if you only see strange characters below, then you need
- to tell your editor to use UTF-8 encoding):
+2x3 pin header (or socket) J15, which is located between the LEDs and the
+On/Off switch. (if you only see strange characters below, then you need to
+tell your editor to use UTF-8 encoding):
 
 
-                  J15
-             ╔═══╤═══╤═══╗
-             ║ 5 │ 2 │ 1 ║
-             ╟───┼───┼───╢
-             ║ 6 │ 4 │ 2 ║
-   ══════════╩═══╧═══╧═══╩════════════════════════════ green PCB
+   ═══════════════════════════════════════════════════════════ red PCB
+
+         ╔═══╗           J15
+         ║ L ║      ╔═══╤═══╤═══╗       ON ←      → OFF
+         ║ E ║      ║ 5 │ 2 │ 1 ║        ╔═══════════╗
+         ║ D ║      ╟───┼───┼───╢        ║  On/Off   ║
+         ║ s ║      ║ 6 │ 4 │ 2 ║        ║  Switch   ║
+   ══════╩═══╩══════╩═══╧═══╧═══╩════════╩═══════════╩════════ green PCB
+
 
 J15 is used for 3 different purposes:
 
 1. In-circuit Programming of the ATtiny 4313.
 =============================================
 
-Ihn this case all 6 pins are used as follows:
+In this case all 6 pins are used as follows:
 
-Pin   Signal  Note
-----------------------------
- 1    MISO    to programmer
- 2    GND
- 3    SCL     from programmer
- 4    MOSI    from programmer
- 5    RESET   from programmer
- 6    Vcc
+╔═════╤════════╤═════════════════╗
+║ Pin │ Signal │ Note            ║
+╠═════╪════════╪═════════════════╣
+║  1  │ MISO   │ to programmer   ║
+╟─────┼────────┼─────────────────╢
+║  2  │ Vcc    │                 ║
+╟─────┼────────┼─────────────────╢
+║  3  │ SCL    │ from programmer ║
+╟─────┼────────┼─────────────────╢
+║  4  │ MOSI   │ from programmer ║
+╟─────┼────────┼─────────────────╢
+║  5  │ RESET  │ from programmer ║
+╟─────┼────────┼─────────────────╢
+║  6  │ GND    │                 ║
+╚═════╧════════╧═════════════════╝
 
 The pin-out is chosen so that a low-cost programmer like the AVRISP mkII
 can be connected directly to the board.
@@ -43,34 +54,48 @@ Before programming the device, switch the device ON.
 IT IS ASSUMED THAT YOU USE A 3.7 VOLTS LITHIUM-ION POLYMER BATTERY THAT HAS
 ITS OWN PROTECTION CIRCUTERY.
 
-In that case, the battery (which is connected directly to Vcc and GND vi J4)
+In that case, the battery (which is connected directly to Vcc and GND via J4)
 can be connected to a 5 Volt Source, for example a USB bus. The first PCB
-layout had a USB connector and a MAX 1555 charging circuit, but that will be
-removed in the future.
+layout had a USB connector and a MAX 1555 charging circuit, but that ciruit
+has been removed because, the built-in charging circuit of Lithiom battery is
+supposedly better adapted to the particular battery used than a generic 
+charging circuit like the MAX 155.;
 
 For charging the battery, two pins of J15 are used:
 
-Pin   Signal  Note
----------------------------------------
- 2    GND     from charger or USB power
- 6    Vcc     from charger or USB power
+╔═════╤════════╤═══════════════════════════╗
+║ Pin │ Signal │ Note                      ║
+╠═════╪════════╪═══════════════════════════╣
+║  2  │ Vcc    │ from charger or USB power ║
+╟─────┼────────┼───────────────────────────╢
+║  6  │ GND    │ from charger or USB power ║
+╚═════╧════════╧═══════════════════════════╝
 
-Before charging the battery, switch the device OFF. The battery can remain
-inside the device during charging. Lithium Polymer batteries are infamous
-for burning or exploding, so please read the documentation that comes with
-your battery carefully!
+When charging the battery, make sure that the device is switched ON. If the
+device is swtched OFF, then the + electrode of the battery is disconnected
+from Vcc of the device and therefore the battery cannot be charged via J15.
+
+The battery can remain inside the device during charging.
+
+Lithium Polymer batteries are infamous for burning or exploding, so please
+CAREFULLY follow the instructions that come with your battery!
 
 3. Debug Printouts
 ==================
 
-The device contiuously prints debug messages on pin 1.
+If the freestyle_deb firmware has been flashed into the OmFLA device, then
+the device continuously prints debug messages on pin 1.
 
-Pin   Signal  Note
---------------------
- 1    MISO    to RxD
- 2    GND
+╔═════╤════════╤═══════════════════════════════════════════════════════╗
+║ Pin │ Signal │ Note                                                  ║
+╠═════╪════════╪═══════════════════════════════════════════════════════╣
+║  1  │ MISO   │ e.g. Pin 10 of the 40 pin Raspberry Pi GPIO connector ║
+║     │        │ via a voltage divider (see below)                     ║
+╟─────┼────────┼───────────────────────────────────────────────────────╢
+║  6  │ GND    │ e.g. Pin  9 of the 40 pin Raspberry Pi GPIO connector ║
+╚═════╧════════╧═══════════════════════════════════════════════════════╝
 
-The data format is 9600 Baud, 8 data bits.
+The data format is 9600 Baud, 8 data bits (the baudrate is subject to change)
 The signal is active low. It can be connected via a voltage divider
 to, for example, a Raspberry Pi. The voltage divider is needed because
 the output voltage is roughly the battery voltage, which is definitely
@@ -88,17 +113,17 @@ can be connected like this:
           │ │
           └┬┘
            │
-J15        ├────────── RxD Pin 9 on Raspberry GPIO
+J15        ├────────── RxD (Pin 9 on Raspberry GPIO)
           ┌┴┐
           │ │
           │ │ 10k
           │ │
           └┬┘
            │
-2 GND  ────┴────────── GND Pin 10 on Raspberry GPIO
+6 GND  ────┴────────── GND (Pin 10 on Raspberry GPIO)
 
 
-If the serial input is 5Volt-tolerant (double check !) then the voltage divider
+If the serial input is 5 Volt-tolerant (double check !) then the voltage divider
 is not needed. If the serial input uses V.24 levels ±12 Volts, then you need
 an appropriate converter like the MAX3232 between MISO and RxD.
 
