@@ -11,8 +11,8 @@ A complete list of tasks that the Makefile can perform is obtained by typing:
 1. Prerequisites
 ----------------
 
-In order to compile the firmware, the free AVR-GCC compiler is needed, see
-https://gcc.gnu.org/wiki/avr-gcc
+In order to compile the firmware, the free AVR-GCC compiler is recommended,
+see https://gcc.gnu.org/wiki/avr-gcc
 
 For flashing the devices the free avrdude programmer software:
 
@@ -21,6 +21,14 @@ http://homepages.uni-regensburg.de/~erc24492/AVR_Dude/AVR_Dude.html
 and a suitable programmer is assumed. You can, of course, use a different
 programmer software by adopting the Makefile accordingly or by issuing the
 appropriate commands manually.
+
+Most users will not want to change the software. These users need not install
+the AVR-GCC compiler, but can instead use the already compiled .hex files
+provided in this directory. The most relevant parameters used by the firmware
+are not stored in the flash memory of the 4313 device, but in its EEPROM.
+These parameters can be changed indenpendently of the firmware by programming
+only the EEPROM of the device, not touching the flash memory.
+
 
 2. Firmware Variants
 --------------------
