@@ -2,7 +2,8 @@
 // variables that may be changed by the user
 DEBUG  = 0;   // debug mode
 UPPER  = 1;   // print the upper or lower half of the box
-BUCKLE = 0;   // print the body with left and right belt loops
+BUCKLE = 1;   // print the body with left and right belt loops
+LEDS   = 1;   // do an LED cutout
 
 // variables that ahould not be changed by the user
 
@@ -18,11 +19,11 @@ tolerance4 = 4*tolerance;
 
 sensor_radius = 15.5;
 
-beeper_radius = 7.3;
-beeper_trans = [20, 13, -14];
+beeper_radius = 7.4;
+beeper_trans = [21.5, 16.9, -14];
 
 antenna_radius = 1.5;
-antenna_trans = [42, 13, -14];
+antenna_trans = [42, 16.9, -14];
 
 green_pcb_l  = 61.0;    // green PCB length
 green_pcb_w  = 54.0;    // green PCB width
@@ -34,8 +35,8 @@ red_pcb_w    = green_pcb_w;    // red PCB width
 red_pcb_h    = 1.55;           // red PCB thickness
 red_offset   = 6.0;
 
-pcb_dist0    = 12.7;     // inner distance between PCBs
-pcb_dist     = pcb_dist0 + ((green_pcb_h + red_pcb_h) / 2);
+pcb_dist0    = 11.2;     // inner distance between green PCB and red PCB
+pcb_dist     = pcb_dist0 + red_pcb_h;
 
 box_thickness = 1.6;
 
@@ -66,6 +67,7 @@ flap_w = 8;
 flap_h = 1.4;
 flap1_l = 30;
 flap2_l =  8;
+flap3_l =  6;
 
 module flap_2D(mirror)
 {
@@ -103,25 +105,44 @@ module flap2(mirror)
                   twist = 0)   flap_2D(mirror);
 }
 
+module flap3(mirror)
+{
+   rotate([0, 90, 0])
+   linear_extrude(height = flap3_l,
+                  center = false,
+                  convexity = 10,
+                  twist = 0)   flap_2D(mirror);
+}
+
 // green PCB incl. tolerance
 //
 module
-green_PCB_2D()
+green_PCB()
 {
-   color(c_green)
-   square([green_pcb_w + tolerance2, green_pcb_h + tolerance2]);
+   cube([
+          green_pcb_w + tolerance2,
+          green_pcb_h + tolerance2,
+          green_pcb_l
+        ]);
 }
 
 // red PCB incl. tolerance
 //
 module
-red_PCB_2D()
+red_PCB()
 {
-   color(c_red)
-      square([red_pcb_w + tolerance2, red_pcb_h + tolerance2]);
-   color([1, 0.5, 0.5])
-   translate([10, red_pcb_h - 5, 0])
-      square([red_pcb_w - 20 + tolerance2, 5]);
+      cube([
+             red_pcb_w + tolerance2,
+             red_pcb_h + tolerance2,
+             red_pcb_l
+           ]);
+
+      translate([10, red_pcb_h - 5, 0])
+         cube([
+                red_pcb_w - 20 + tolerance2,
+                5,
+                red_pcb_l
+              ]);
 }
 
 module pcb_guard()
@@ -147,12 +168,6 @@ profile_2D()
         square([box_w_o, box_h_o]);
         translate([box_thickness, box_thickness, 0])
            rounded_rect(box_w_i, box_h_i, 1);
-      }
-
-   if (DEBUG)
-      {
-        translate([box_thickness, box_y_green, 0]) green_PCB_2D();
-        translate([box_thickness, box_y_red, 0])   red_PCB_2D();
       }
 
    translate([0, pcb_guard_y1, 0])   pcb_guard();
@@ -182,13 +197,25 @@ module box_3D()
    //
    cube([box_w_o, box_h_o, box_thickness]);
 
-   // ring around the beeper in the bottom plate
+   // 1mm thick ring around the beeper in the bottom plate
    //
    translate(beeper_trans)    cylinder(h = 17, r = beeper_radius + 1, $fn = 90);
 
    // main body
    //
    translate([0, 0, box_thickness])   profile_3D();
+
+
+   if (DEBUG)
+      {
+        color(c_green)
+        translate([box_thickness, box_y_green, box_thickness])
+        green_PCB();
+
+        color(c_red)
+        translate([box_thickness, box_y_red, box_thickness])
+        red_PCB();
+      }
 
    // ring around the sensor in the main body
    //
@@ -233,7 +260,7 @@ module box_3D_cutout()
              cylinder(h = 20, r = antenna_radius, $fn = 90);
 
              translate([0, 0.5*box_h_o, box_l_o - 5])
-             mirror([0, 1, 0])
+    //       mirror([0, 1, 0])
              translate([0, -0.5*box_h_o, 0])
              cover_3D_cutout();
            }
@@ -281,44 +308,54 @@ module cover_3D()
 
 module cover_2D_cutout()
 {
-switch_w = 11;
-switch_h = 7;
-switch_x = 5.5;
-switch_y = box_y_green + 1.5;
+tol = 0.5;   // a little more than needed
+tol2 = 2*tol;
 
-led_dia = 3.5;
-led_radius = 0.5 * led_dia;
+leds_w   = 4.3 + tol2;
+leds_h   = 9.7 + tol2;
 
-red_led_x = 20.7;    // center
-red_led_y = box_y_green - led_radius;
+prog_w   = 8.1 + tol2;
+prog_h   = 5.0 + tol2;
 
-green_led_x = red_led_x + 5.12;
-green_led_y = red_led_y;   // center
+switch_w = 7.6 + tol2;
+switch_h = 3.5 + tol2;
 
-prog_w = 10.24 + tolerance2;
-prog_h = 4.1;
-prog_x = green_led_x + 4;
-prog_y = box_y_green - 4.1;
+leds_wh   = [leds_w,   leds_h];
+prog_wh   = [prog_w,   prog_h];
+switch_wh = [switch_w, switch_h];
 
-   // cutout for the on-off switch
+// distances from left green PCB edge
+//
+gpcb_leds   =  4.9;
+gpcb_prog   = 19.1;
+gpcb_switch = 35.3;
+gpcb_outer  =  2.0;   // left green PCB edge to box hull
+
+leds_x   = gpcb_leds   + gpcb_outer - tol;
+prog_x   = gpcb_prog   + gpcb_outer - tol;
+switch_x = gpcb_switch + gpcb_outer - tol;
+
+leds_y   = box_y_green - 0.8 + tol;
+prog_y   = box_y_green - 0.8 + tol;
+switch_y = box_y_green - 2.0 + tol;
+
+   // cutout for the LED block
    //
-   translate([switch_x, box_h_o - switch_y, -5])
-      square([switch_w, switch_h]);
-
-   // cutout for the red LED
-   //
-   translate([red_led_x, box_h_o - red_led_y, -5])
-      circle(r = led_radius, $fn = 90);
-
-   // cutout for the green LED
-   //
-   translate([green_led_x, box_h_o - green_led_y, -5])
-      circle(r = led_radius, $fn = 90);
+   if (LEDS)
+      {
+        translate([leds_x, box_h_o - leds_y])
+        square(leds_wh, center = false);
+      }
 
    // cutout for the program connector
    //
-   translate([prog_x, box_h_o - prog_y, -5])
-      square([prog_w, prog_h]);
+   translate([prog_x, box_h_o - prog_y])
+      square(prog_wh, center = false);
+
+   // cutout for the on-off switch
+   //
+   translate([switch_x, box_h_o - switch_y])
+      square(switch_wh, center = false);
 }
 
 module cover_3D_cutout()
@@ -329,12 +366,12 @@ module cover_3D_cutout()
                   twist = 0) cover_2D_cutout();
 }
 
-///  a (left or right) buckle for holding the casing
+/// a buckle for holding the housing, e.g. by means of a tourniquet
 module buckle_2D(rnd)
 {
-l  = 24;
-h1 =  6;
-dh = 1;
+l  = 35;
+h1 =  3;
+dh = 0.5;
 h2 = h1 + dh;
 wi =  1.141*(rnd + dh);
    polygon([[ 0,  0],               [wi,  0],
@@ -345,11 +382,12 @@ wi =  1.141*(rnd + dh);
 
 module buckle_3D()
 {
-rnd = 1;
-   translate([0, 0, rnd])
+rnd = 1;      // minkowski rounding diameter
+width = 40;   // width of the buckle
+   translate([0, -1.5, rnd])
    minkowski($fn=20)
       {
-        linear_extrude(height = 15,
+        linear_extrude(height = width,
                        center = false,
                        convexity = 2,
                        twist = 0) buckle_2D(rnd);
@@ -364,16 +402,10 @@ module main_body_and_buckle()
 
    if (BUCKLE)
       {
-        // left buckle
+        // buckle
         //
-        translate([0.5, 22, 3])
-        rotate([0, -90, 90])
-        buckle_3D();
-
-        // right buckle
-        //
-        translate([box_w_o - 0.5, 5, 3])
-        rotate([0, -90, -90])
+        translate([50, 27, 3])
+        rotate([0, -90, 0])
         buckle_3D();
       }
 }
@@ -399,11 +431,16 @@ if (UPPER)
               box_thickness,
               tb_cut_z])   flap1(0);
 
-   // wide flap (back)
+
+   // broken wide flaps (back)
    //
-   translate([0.5*(box_w_o - flap1_l),
+   translate([box_thickness + 1.0,
               box_h_o - (flap_h + box_thickness),
-              tb_cut_z])   flap1(1);
+              tb_cut_z])   flap3(1);
+
+   translate([box_w_o - (box_thickness + 1.0 + flap3_l),
+              box_h_o - (flap_h + box_thickness),
+              tb_cut_z])   flap3(1);
 
    // narrow flap (left)
    //

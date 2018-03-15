@@ -3,9 +3,9 @@
 # PROGRAMMER selection...
 #
 # PROGRAMMER = avrisp2 -B 4   // too low for built-in clock
-  PROGRAMMER = avrisp2 -B 8
-# PROGRAMMER = avrisp2 -B 10
-# PROGRAMMER = avrisp2 -B 100
+# PROGRAMMER = avrisp2 -B 8
+  PROGRAMMER = avrisp2 -B 10
+#P ROGRAMMER = avrisp2 -B 100
 
 # PROGRAMMER = xil
 
@@ -17,7 +17,7 @@ PART = attiny4313
 ################################################33
 # FUSE selection...
 #
-FUSEL = 0xA2 # internal 4 MHz oscillator ÷1
+FUSEL = 0x62
 FUSEL_DESCR = internal 4 MHz oscillator ÷1
 
 TOOLS = /usr/lib/avr/bin

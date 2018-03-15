@@ -1,6 +1,6 @@
 
 The file alarm.scad is an openscad source file from which .stl files
-for both the body of an OmFLA casing and a cover for it can be generated.
+for both the body of an OmFLA housing and a cover for it can be generated.
 
 The choice between the body of the casing or its cover is made at the
 beginning of the alarm.scad file by setting the COVER variable.

@@ -1,11 +1,6 @@
 # OmFLA
 **O**ne **m**ore **F**reestyle **L**ibre **A**larm
 
-**NOTE: this repository is currently under construction. A working prototype
-of the OmFLA device exists and is being tested. The source files used to build
-the prototype have already been transferred into this repository, but the
-documentation of the device is still ongoing.**
-
 This project contains the hardware (schematic and PCB layout), micro-controller
 software (C++ for an Atmel ATtiny 4313), and mechanics (openscad file for 3D
 printers) of a small device that MAY be useful for users of Freestyle Libre

@@ -70,15 +70,12 @@ enum Measurement_Intervals
 #endif
 
 #if SOFT_UART
-#if MODE == 1   // TxD connected to TCM 310
-# define   SOFT_BAUD   57600
-# define   SOFT_PORT   PORTD
-# define   SOFT_PBIT   D_TCM_TxD
-#else           // TxD on B_PROG_MISO (J15 pin 1)
-# define   SOFT_BAUD   9600
-# define   SOFT_PORT   PORTB
-# define   SOFT_PBIT   B_PROG_MISO
-#endif
+# define SOFT_BAUD 57600
+# define SOFT_PORT_1 PORTB
+# define SOFT_PBIT_1 B_PROG_MISO
+# define SOFT_PORT_2 PORTD
+# define SOFT_PBIT_2 D_TCM_TxD
+
 enum { SOFT_COUNT = (F_CPU / SOFT_BAUD)/4 - 2 };
 #endif
 
@@ -131,22 +128,13 @@ static void transmit_glucose(uint8_t gluco_2) {}
 #define output_pin(port, bit) (DDR  ## port |=   port ## _ ## bit)
 #define input_pin(port, bit)  (DDR  ## port &= ~ port ## _ ## bit)
 
-enum
-{
-   ABSOLUTE_HIGH_2 = ABSOLUTE_HIGH/2,
-   ABSOLUTE_LOW_2  = ABSOLUTE_LOW/2,
-   RELATIVE_HIGH_2 = RELATIVE_HIGH/2,
-   RELATIVE_LOW_2  = RELATIVE_LOW/2,
-};
-
 enum IO_pins
 {
    __A_XTAL_1  = 1 << PA0,   // XTAL1 (not used)
    __A_XTAL_2  = 1 << PA1,   // XTAL2 (not used)
-   __A_RESET   = 1 << PA2,   // RESET (not used)
+   __A_RESET   = 1 << PA2,   // RESET (NEVER drive it  high!)
    outputs_A   = __A_XTAL_1
-               | __A_XTAL_2
-               | __A_RESET,
+               | __A_XTAL_2,
    pullup_A  = 0,
 
    B_BTEST_OUT = 1 << PB0,   // battery test output
@@ -156,7 +144,7 @@ enum IO_pins
    B_LED_GREEN = 1 << PB4,   // green LED
    B_PROG_MOSI = 1 << PB5,   // MOSI from serial programmer
    B_PROG_MISO = 1 << PB6,   // MISO to   serial programmer (not used)
-   __PROG_SCL  = 1 << PB7,   // SCL  from serial programmer (not used)
+   B_PROG_SCL  = 1 << PB7,   // SCL  from serial programmer, -EN for RFID
 
 #if HARD_UART
    outputs_B   = B_BTEST_OUT
@@ -164,8 +152,8 @@ enum IO_pins
                | B_TCM_POWER
                | B_LED_GREEN
                | B_PROG_MOSI
-  ///          | __PROG_MISO // maybe ed to TxD
-               | __PROG_SCL,
+  ///          | __PROG_MISO // maybe connected to TxD
+               | B_PROG_SCL,
 #elif SOFT_UART
    outputs_B   = B_BTEST_OUT
                | B_MOSI
@@ -173,7 +161,7 @@ enum IO_pins
                | B_LED_GREEN
                | B_PROG_MOSI
                | B_PROG_MISO  // soft UART TxD
-               | __PROG_SCL,
+               | B_PROG_SCL,
 #else
    outputs_B   = B_BTEST_OUT
                | B_MOSI
@@ -181,7 +169,7 @@ enum IO_pins
                | B_LED_GREEN
                | B_PROG_MOSI
                | B_PROG_MISO  // UART txD and PROG_MISO both driven low
-               | __PROG_SCL,
+               | B_PROG_SCL,
 #endif
    pullup_B  = 0,
 
@@ -240,8 +228,16 @@ int16_t bits = (0xFF00 | ch) << 1;
 
    for (uint8_t j = 0; j < 12; ++j)   // 1 start _ 8 data + 3 stop
        {
-         if (bits & 1)   SOFT_PORT |=  SOFT_PBIT;
-         else            SOFT_PORT &= ~SOFT_PBIT;
+         if (bits & 1)
+            {
+              SOFT_PORT_1 |=  SOFT_PBIT_1;
+              SOFT_PORT_2 |=  SOFT_PBIT_2;
+            }
+         else
+            {
+              SOFT_PORT_1 &= ~SOFT_PBIT_1;
+              SOFT_PORT_2 &= ~SOFT_PBIT_2;
+            }
          bits >>= 1;
          _delay_loop_1(SOFT_COUNT);
        }
@@ -340,8 +336,8 @@ init_hardware()
    DDRD = outputs_D;
 
    PORTA = pullup_A;
-   PORTB = pullup_B | B_PROG_MOSI | B_TCM_POWER;
-   PORTD = pullup_D;
+   PORTB = pullup_B | B_PROG_MOSI | B_TCM_POWER | B_PROG_SCL;
+   PORTD = pullup_D | D_BEEPER;
 
    // CPU clock prescaler: x1
    //
@@ -369,7 +365,8 @@ init_hardware()
    UCSRB = 0 << RXEN | 1 << TXEN;
    UCSRC = 1 << USBS | 3 << UCSZ0;   // async, 2 stop, 8 data
 #elif SOFT_UART
-   SOFT_PORT |= SOFT_PBIT;   // set TxD high
+   SOFT_PORT_1 |= SOFT_PBIT_1;   // set TxD high
+   SOFT_PORT_2 |= SOFT_PBIT_2;   // set TxD high
 #endif
 
    // set up pins again AFTER all alternate functions have been enabled...
@@ -387,8 +384,8 @@ init_hardware()
    // see 10.1.1 Configuring the Pin
    //
    PORTA = pullup_A;
-   PORTB = pullup_B;
-   PORTD = pullup_D;
+   PORTB = pullup_B | B_PROG_SCL;
+   PORTD = pullup_D | D_BEEPER;
 
    // initialize SPI interface to RFID reader
    //
@@ -451,9 +448,9 @@ beep(uint8_t repeat, uint16_t ms_on, uint8_t ms_off)
 // print_stringv("beep \x90\n", ms_on);
    for (int j = 0; j < repeat; ++j)
       {
-        set_pin(D, BEEPER);
-        sleep_ms(ms_on);
         clr_pin(D, BEEPER);
+        sleep_ms(ms_on);
+        set_pin(D, BEEPER);
         sleep_ms(ms_off);
       }
 }
@@ -792,10 +789,10 @@ doit(uint16_t j)
         const uint8_t br = batt_result >> 3;
         uint8_t battery_beeps = 5;
 
-        if      (br >= user_params.battery_1)   battery_beeps = 1;
-        else if (br >= user_params.battery_2)   battery_beeps = 2;
-        else if (br >= user_params.battery_3)   battery_beeps = 3;
-        else if (br >= user_params.battery_4)   battery_beeps = 4;
+        if      (br >= user_params.battery_1__8)   battery_beeps = 1;
+        else if (br >= user_params.battery_2__8)   battery_beeps = 2;
+        else if (br >= user_params.battery_3__8)   battery_beeps = 3;
+        else if (br >= user_params.battery_4__8)   battery_beeps = 4;
 
         beep(battery_beeps, 200, 200);
       }
@@ -843,8 +840,8 @@ uint16_t aver_2 = 0;
    else if (aver_2 >= initial_glucose_2)   // glucose has increased
       {
         board_status = BSTAT_ABOVE_INITIAL;
-        if (aver_2 > ABSOLUTE_HIGH_2
-         || aver_2 > (initial_glucose_2 + RELATIVE_HIGH_2))
+        if (aver_2 > user_params.abs_HIGH__2
+         || aver_2 > (initial_glucose_2 + user_params.rel_HIGH__2))
            {
              set_pin(D, LED_RED);      // red LED on
              beep(10, 500, 200);
@@ -853,8 +850,8 @@ uint16_t aver_2 = 0;
    else   // glucose has decreased
       {
         board_status = BSTAT_BELOW_INITIAL;
-        if (aver_2 < ABSOLUTE_LOW_2
-         || aver_2 < (initial_glucose_2 - RELATIVE_LOW_2))
+        if (aver_2 < user_params.rel_LOW__2
+         || aver_2 < (initial_glucose_2 - user_params.rel_LOW__2))
            {
              set_pin(B, LED_GREEN);    // green LED on
              beep(10, 500, 200);
@@ -880,6 +877,7 @@ main(int, char *[])
    }
 
    init_hardware();
+   sleep_ms(50);
 
    init_RFID_reader();
 
@@ -889,6 +887,20 @@ const uint8_t calib = user_params.oscillator_calibration;
    else                 OSCCAL = CPU_CALIB;
 #endif
 
+   print_stringv("\n\n\nosc=x\x80\n", OSCCAL);
+   print_stringv("slope=\x90\n",      user_params.sensor_slope);
+   print_stringv("offset=\x90\n",     user_params.sensor_offset);
+   print_stringv("abs_HIGH=\x90\n",   user_params.abs_HIGH__2  << 1);
+   print_stringv("abs_LOW=\x90\n",    user_params.abs_LOW__2   << 1);
+   print_stringv("rel_HIHH=\x90\n",   user_params.rel_HIGH__2  << 1);
+   print_stringv("rek_LOW=\x90\n",    user_params.rel_LOW__2   << 1);
+   print_stringv("batt_1=\x90\n",     user_params.battery_1__8 << 3);
+   print_stringv("batt_2=\x90\n",     user_params.battery_2__8 << 3);
+   print_stringv("batt_3=\x90\n",     user_params.battery_3__8 << 3);
+   print_stringv("batt_4=\x90\n",     user_params.battery_4__8 << 3);
+   print_stringv("batt_5=\x90\n",     user_params.battery_5__8 << 3);
+
+
    // transmit a glucose value of 0 as a restart indication and to
    // inform receiver(s) about the battery status.
    //
@@ -897,7 +909,6 @@ const uint8_t calib = user_params.oscillator_calibration;
    for (uint16_t j = 0;; ++j)
        {
 //       dump_registers();
-
          int32_t wait = doit(j);
          while (wait > 0)   wait -= sleep_ms(wait);
        }

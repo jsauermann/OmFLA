@@ -28,8 +28,14 @@ print_hex4(uint16_t ch)
 }
 //-----------------------------------------------------------------------------
 static void
-print_dec(uint16_t val)
+print_dec(int16_t val)
 {
+   if (val < 0)
+      {
+        print_char('-');
+        val = -val;
+      }
+
 char buf[10];
 uint8_t plen = 1;
 
