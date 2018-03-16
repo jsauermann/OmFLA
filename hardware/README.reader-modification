@@ -1,0 +1,64 @@
+
+Overview
+========
+
+In theory the RFID reader can be used as shipped. However, two small
+modifications of the reader are STRONGLY recommended. In short the
+modifications are:
+
+1. remove LED1
+2. Open the IRQ_SEL jumper
+
+Reasons for 1.
+==============
+
+The RFID reader is constructed in such a way that LED1 is permanently shining.
+That can be annoying at night time, in particular if you use a transparent
+housing for the OmFLA device.
+
+More importantly, the LED consumes power which has a significant effect on
+the battery lifetime. That is, you have to recharge the battery more often.
+
+Reason for 2.
+=============
+
+The middle pin of the IRQ_SEL jumper (aka. J4) carries signal IRQ of the reader
+to either pin 8 of J1, or to pin 18 of J2. The latter setting is the default
+when the reader is shipped. The IRQ signal of the reader is, however, not used
+by the OmFLA device.
+
+By opening the IRQ_SEL jumper we therefore get a "free" connection from the
+red reader PCB to the green OmFLA PCB via J2. We can use this free wire to
+route Vcc from the reader PCB to the OmFLA PCB. The reason why we want that
+is a mechanical one: placement of the battery.
+
+In principle there are 2 options how the battery is connected to the OmFLA
+device:
+
+Option 1 is to connect the battery to pins 1 and 2 of J4 on the OmFLA PCB
+(these pins are labeled - and + for the corresponding battery poles). This
+approach works for smaller batteries, and the battery then "hangs" between the
+two PCBs. This option is OK for testing purposes, but not for the day-to-day
+usage of the device. Sooner or later the cables to the battery will break
+because the battery hangs loose between the two PCBs and will move back and
+forth.
+
+Option 2 is to glue the battery to the bottom of the reader PCB with double
+faced adhesive tape to some GND of the reader, and to pin 1 of J4 on the
+reader PCB. Pin 1 of J4 is connected to pin 18 of J2 of the red reader PCB,
+which is connected to the (unlabeled) pin 3 of J4 on the green OmFLA PCB.
+By connecting pins 2 and 3 of J4, we now have Vcc running from the battery
+underneath the read PCB via pin 1 of the IRQ_SEL jumper, pin 18 of J2, to
+the same place where the battery was connected in option 1.
+
+All that sounds more complex than it really is, please have a look at the
+pictures in this directory.
+
+
+Details:
+========
+
+There are some pictures in this directory that show how the red reader PCB
+shall be modified.
+
+
