@@ -49,8 +49,8 @@ enum CPU_Calibration
    NO_CPU_CALIBRATION = 0xFF,   // no CPU calibration
 
 // CPU_CALIBRATION    = NO_CPU_CALIBRATION   // good luck!
-   CPU_CALIBRATION    = 0x46                 // PCB #1
-// CPU_CALIBRATION    = 0x3F                 // PCB #2
+// CPU_CALIBRATION    = 0x46                 // PCB #1
+   CPU_CALIBRATION    = 0x3F                 // PCB #2
 };
 
 /// alarm thresholds define at which glucose level an alarm is raised
