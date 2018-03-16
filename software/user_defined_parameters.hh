@@ -22,28 +22,35 @@
 // ======== USER-CONFIGURABLE PARAMETERS ======================================
 //=============================================================================
 
-// CPU calibration is needed if:
+// NOTE: calibration of the CPU frequency is only needed if:
 //
 // 1. serial communication is used (i.e. for the debug print and enocean
 //    targets), AND
 //
 // 2. the internal RC oscillator is used and its frequency is not close to
-//    an integer multiple of 16 times the highest baudrate used (i.,e. 57600)
+//    an integer multiple of 16 times the baudrate used (which is 57600 baud)
 //
-// Most ordinary mortals are expected to use the no-debug tartget and
-// therefore do not need any CPU calibration.
+// Most ordinary mortals are expected to use the no-debug target (firmware file
+// freestyle_nod.hex) and therefore do not need any CPU calibration.
 //
 // A more elegant approach is to use a 3,6864 MHz crystal instead of the
 // internal 4 MHz RC oscillator. In that case the crystal frequency is exactly
-// 4*16*57600 and no calibration isd needed. The downside is probably a
+// 4*16*57600 and no CPU calibration is needed. The downside is probably a
 // slightly higher current consumption.
+//
+// In all cases, make sure that the macro F_CPU in every C++ file is set
+// to the actual (crystal or calibrated) frequency of the CPU. All internal
+// timings depend on that frequency. but only the baudrate of the serial
+// communication needs a frequency within 2% of the nominal value, while
+// the other timings are fine with a 10% deviation from the nominal frequency.
 
 enum CPU_Calibration
 {
    NO_CPU_CALIBRATION = 0xFF,   // no CPU calibration
+
 // CPU_CALIBRATION    = NO_CPU_CALIBRATION   // good luck!
-   CPU_CALIBRATION    = 0x46    // Ralf
-// CPU_CALIBRATION    = 0x3F    // PCB #2
+   CPU_CALIBRATION    = 0x46                 // PCB #1
+// CPU_CALIBRATION    = 0x3F                 // PCB #2
 };
 
 /// alarm thresholds define at which glucose level an alarm is raised
