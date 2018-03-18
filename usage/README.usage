@@ -33,11 +33,11 @@ State    LED pattern             Meaning
 See also 'enum BOARD_STATUS' in software/freestyle.cc.
 
 Next, the OmFLA device attempts to read the Freestyle Libre Sensor. If that
-fails, most likely because no sensor in located close to the OmFLA device,
-then the OmFLA device issues 3 short beeps and tries again after 2 Minutes.
+fails, most likely because no sensor is located close to the OmFLA device,
+then the OmFLA device issues 3 short beeps and tries again after 1 minute.
 
-If the sensor succeeds in reading the sensor then OmFLA device decides if it
-shall raise an alarm. An alarm is indicated by long beeps until the alarm
+If the OmFLA device succeeds in reading the sensor then the device decides if
+it shall raise an alarm. An alarm is indicated by long beeps until the alarm
 condition ceases of the OmFLA device is switched off. At this point you
 should should turn off the device and measure your glucose level by other
 means, because the OmFLA device is not very precise. While the alarm is
