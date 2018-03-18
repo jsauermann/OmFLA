@@ -3,7 +3,7 @@ The OmFLA device is intended to be used as follows.
 1. Power ON
 ===========
 
-The device is powered on by moving the On/Off switch away from the LEDs. The
+The device is powered on by moving the On/Off switch towards the LEDs. The
 first thing that the device does after power ON is a battery test. The result
 of the test is indicated by 1 (battery low) to 5 (battery full) long beeps.
 
