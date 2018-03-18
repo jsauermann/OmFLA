@@ -58,7 +58,19 @@ pictures in this directory.
 Details:
 ========
 
-There are some pictures in this directory that show how the red reader PCB
-shall be modified.
+There are some pictures in this directory that show excatly how the
+modifications described above shall be made:
+
+* RFID-reader-before.jpg and RFID-reader-after.jpg show the modifications
+  of the red RFID reader PCB,
+
+* battery_connected.jpg shows how the battery shall be connected to the red
+  RFID reader PCB
+
+* battery_mounted.jpg shows how the battery shall be mounted to the red PCB.
+  Please not the larger space on the left side: this is to make sure that
+  the LED block on the green PCB does not collide with the battery.
+
+* battery_J4.jpg shows how J4 on the green OmFLA PCB shall be set (soldered).
 
 
