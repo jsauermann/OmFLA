@@ -832,6 +832,7 @@ uint16_t aver_2 = 0;
 
    print_stringv("glucose: \x90\n", 2*aver_2);   // aver_2 is halved!
 
+bool raise_alarm = false;
    if (initial_glucose_2 == 0)   // first glucose measurement
       {
         initial_glucose_2 = aver_2;
@@ -844,7 +845,7 @@ uint16_t aver_2 = 0;
          || aver_2 > (initial_glucose_2 + user_params.rel_HIGH__2))
            {
              set_pin(D, LED_RED);      // red LED on
-             beep(10, 500, 200);
+             raise_alarm = true;
            }
       }
    else   // glucose has decreased
@@ -854,14 +855,20 @@ uint16_t aver_2 = 0;
          || aver_2 < (initial_glucose_2 - user_params.rel_LOW__2))
            {
              set_pin(B, LED_GREEN);    // green LED on
-             beep(10, 500, 200);
+             raise_alarm = true;
            }
       }
 
    // transmit_glucose() also transmits board_status, so that we must not
-   // call it earlier.
+   // call it before board_status was updated
    //
    transmit_glucose(aver_2);
+
+   if (raise_alarm)   // glucose is too low or too high
+      {
+         beep(172, 500, 200);   // beep for ~ 2 minutes
+         return 2000;           // then wait 2 seconds
+      }
 
    return 1000*int32_t(NORMAL_WAIT_SECONDS);
 }
