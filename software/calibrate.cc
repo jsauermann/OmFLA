@@ -17,11 +17,40 @@
 
 /*
   This is a helper program for calibrating the internal RC oscillator
-  of an Atmel 4313.
+  of an Atmel 4313 in order to produce a proper baud rate of 57600 Baud.
+
+   There are quite a few different ways to achieve this:
+
+   1a. Use a 3.686400 Hz crystal and the hardware UART of the ATtiny4313,
+   1b. Use a 3.686400 Hz crystal and the software UART of the ATtiny4313,
+   2.  Use a 4.000000 Hz crystal and the software UART of the ATtiny4313,
+   3a. Use the (uncalibrated) built-in 4 MHz RC oscillator of the ATtiny4313
+       and the software UART, and calibrate SOFT_COUNT to get the desired
+       baud rate, 
+   3b. Use the calibrated built-in 4 MHz RC oscillator of the ATtiny4313
+       and the software UART, and leave SOFT_COUNT as is to get the desired
+       baud rate,
+
+   1a, 1b, and 2 have the disadvantage of using slighly more current, but
+   give the precisest baud rate.
+
+   2. is always worse than 1a or 1b. and should only be used if a very precise
+      baudrate is needed and no 3.686400 Hz crystal is not available. It can be
+      used for other crystal frequencies as well by scaling SOFT_COUNT
+      accordingly.
+
+   3b. is the method choosen by OmFLA
+
+   Macro VARY_COUNT below selects if the SOFT_COUNT for the UART or the
+   built-in 4 MHz RC oscillator shall be calibrated.
  */
 
-#define F_CPU 4000000   // nominal CPY frequency
-#define F_IO  F_CPU
+// #define VARY_COUNT 0
+#define VARY_COUNT 1
+
+// # define F_CPU 3686400
+# define F_CPU 4000000
+
 #define SOFT_BAUD 57600
 #define SOFT_PORT_1 PORTB
 #define SOFT_PBIT_1 B_PROG_MISO
@@ -42,6 +71,7 @@
 enum { SOFT_COUNT = (F_CPU / SOFT_BAUD)/4 - 2 };
 
 static bool soft_mode = true;
+static uint8_t soft_count = SOFT_COUNT;
 static uint8_t initial_calib = 0;
 static uint16_t batt_result = 0;
 
@@ -109,13 +139,13 @@ init_hardware()
    CLKPR = 0x80;   // enable write to CLKPR
    CLKPR = 0x00;   // x1 clock
 
-   // UART
+   // hardware UART
    //
    enum
       {
         BAUDRATE = 57600,
-        F_IO_16 = F_IO/16,
-        BAUD_DIVISOR = (F_IO_16 / BAUDRATE) - 1
+        F_CPU_16 = F_CPU/16,
+        BAUD_DIVISOR = (F_CPU_16 / BAUDRATE) - 1
       };
 
    UBRRH = BAUD_DIVISOR >> 8;
@@ -176,7 +206,7 @@ int16_t bits = (0xFF00 | ch) << 1;
               SOFT_PORT_2 &= ~SOFT_PBIT_2;
             }
          bits >>= 1;
-         _delay_loop_1(SOFT_COUNT);
+         _delay_loop_1(soft_count);
        }
 }
 //-----------------------------------------------------------------------------
@@ -301,7 +331,7 @@ const uint8_t * e = 0;
    battery_test();
    print_string("\n\nF_CPU=");          print_dec(F_CPU);
    print_string(", soft_mode=");        print_dec(soft_mode);
-   print_string(", soft_count=");       print_dec(SOFT_COUNT);
+   print_string(", soft_count=");       print_dec(soft_count);
    print_string(", OSCCAL=");           print_hex2(OSCCAL);
    print_string(", battery=");          print_dec(batt_result);
    print_string(", initial OSCCAL=");   print_hex2(initial_calib);
@@ -332,12 +362,22 @@ main(int, char *[])
        {
          PIND = D_LED_RED;   // toggle red LED
 
+#if VARY_COUNT
+         enum { CAL_FROM = (4*SOFT_COUNT)/5,     //  80% of SOFT_COUNT
+                CAL_TO   = (6*SOFT_COUNT)/5 };   // 120% of SOFT_COUNT
+         for (uint8_t cal = CAL_FROM; cal < CAL_TO; ++cal)
+             {
+               soft_count = cal;
+               doit();
+             }
+#else
          for (uint8_t cal = 0; cal < 128; ++cal)
              {
                OSCCAL = cal;
-               _delay_ms(10);
+               _delay_ms(10);   // allow RC oscillator to change
                doit();
              }
+#endif
        }
 }
 //-----------------------------------------------------------------------------

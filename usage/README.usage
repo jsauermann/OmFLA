@@ -45,20 +45,48 @@ raised, i.e. while the device beeps, one of the LEDs is permanently on: the
 red LED indicates a high glucose value, while the green LED indicates a low
 glucose values.
 
-High means either a glucose level above an absolute value, or a significant
-increase of the glucose level since the device was powered on. Likewise,
-low means either a glucose level below an absolute value, or a significant 
-decrease of the glucose level since the device was powered on. The absolute
-and relative (compared to the glucose level when the OmFLA device was switched
-on) glucose levels at which an alarm is being raised, can be configured by
-the user in file software/user_defined_parameters.hh.
+The terms "high" and "low" for alarms depend on two factors: the initial
+glucose level (as measured by the OmFLA device when it switched on) and
+user-configurable parameters in file software/user_defined_parameters.hh.
+For the sake of this explanation we assume that the default values in file
+user_defined_parameters.hh are in force:
+
+   ALARM_HIGH  = 250,   // mg/dl, beep if glucose > ALARM_HIGH
+   ALARM_LOW   =  66,   // mg/dl, beep if glucose < ALARM_LOW
+   MARGIN_HIGH =  40,   // mg/dl, minimum between initial and limit_HIGH
+   MARGIN_LOW  =  20,   // mg/dl, minimum between initial and limit_LOW
+
+A. If the initial glucose level lies between (ALARM_LOW + MARGIN_LOW) and
+   (ALARM_HIGH - MARGIN_HIGH), that is between 86 and 210, then the OmFLA
+   device will raise an alarm when the current glucose level goes above
+   ALARM_HIGH = 250 or below ALARM_LOW = 60. This is the "normal" way to
+   use the OmFLA device.
+
+B. If the initial glucose level lies above (ALARM_HIGH - MARGIN_HIGH), that
+   is above 210, then the "normal" operation A. of the device would trigger
+   an alarm immediately. For that reason, the glucose level at which an alarm
+   is raised is temporarily increased to initial glucose + MARGIN_HIGH. So
+   if you turn on the devive when your glucose level is 240, then the device
+   will not raise an alarm at 250 (as in A.), but at 240+40 = 280 in this
+   example. As the glucose level goes down (assuming that you have taken
+   measures to decrease the glucose level before turning the OmFLA device on)
+   the alarm level is decreased accordingly until it reaches ALARM_HIGH. From
+   that point in time onwards, the device is back to its "normal" way of
+   working.
+
+C. Likewise, if the initial glucose level lies below (ALARM_LOW + MARGIN_LOW),
+   that is below 86, then the glucose level at which an alarm is being raised
+   is temporarily decreased to initial glucose - MARGIN_LOW. So if you turn on
+   the devive when your glucose level is 75, then the device  will not raise
+   an alarm at 66 (as in A.), but at 75-20 = 55 in this example. As the glucose
+   level goes up (assuming that you have taken measures to increase the glucose
+   level before turning the OmFLA device on) the alarm level is iccreased
+   accordingly until it reaches ALARM_LOW. From that point in time onwards,
+   the device is back to its "normal" way of working.
 
 It is important to turn off the device after an alarm has been raised, because
-turning the device on again then causes the device to start with a new initial
-glucose level is stored in the device. Since the OmFLA device does not
-calibrate the sensors are the RELATIVE_HIGH and RELATIVE_LOW more reliable
-than ABSOLUTE_HIGH and ABSOLUTE_LOW, and powering the OmFLA device off and
-on again is an important step to keep the device up to date.
+turning the device on again then causes the device to adapt itself to the
+current state of affairs.
 
 3. Charging the battery
 =======================

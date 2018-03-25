@@ -47,7 +47,8 @@ all:	beeper_test.hex   \
 	calibrate.hex     \
 	freestyle_nod.hex \
 	freestyle_eno.hex \
-	freestyle_deb.hex
+	freestyle_deb.hex \
+	eeprom.data
 
 help:
 	@echo "make targets:"

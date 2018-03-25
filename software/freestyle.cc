@@ -27,11 +27,6 @@
 // High Fuse:     0xDF (default)
 // Low Fuse:      0x62 (default)
 //
-enum Measurement_Intervals
-{
-   ERROR_WAIT_SECONDS  = 60,    // time to sleep after an RFID read error
-   NORMAL_WAIT_SECONDS = 600,   // time to sleep after a successful RFID read
-};
 
 // the macro MODE defines if:
 //
@@ -819,7 +814,7 @@ bool errors;
          board_status = BSTAT_RFID_ERROR;
          transmit_glucose(0);
          beep(3, 100, 100);
-         return 1000*int32_t(ERROR_WAIT_SECONDS);
+         return 8000*int32_t(user_params.read_interval__8);
       }
 
    gluco_sort();
@@ -837,12 +832,32 @@ bool raise_alarm = false;
       {
         initial_glucose_2 = aver_2;
         board_status = BSTAT_RUNNING;
+
+        // maybe adjust the alarm thresholds so that aver_2 lies well between
+        // them. This is to avoid an alarm if the initial glucose level is too
+        // high or too low when the device is switched on. That is, we want:
+        //
+        // alarm_LOW + margin_LOW  <=  aver_2  <=  alarm_HIGH - margin_HIGH
+        //
+        const uint8_t amax_2 = initial_glucose_2 + user_params.margin_HIGH__2;
+        const uint8_t amin_2 = initial_glucose_2 - user_params.margin_LOW__2;
+
+        if (user_params.alarm_LOW__2 > amin_2)
+           user_params.alarm_LOW__2 = amin_2;
+        if (user_params.alarm_HIGH__2 < amax_2)
+           user_params.alarm_HIGH__2 = amax_2;
       }
    else if (aver_2 >= initial_glucose_2)   // glucose has increased
       {
+        // maybe decrease the upper alarm thresholds again
+        //
+        const uint8_t new_limit = aver_2 + user_params.margin_HIGH__2;
+        if (user_params.alarm_HIGH__2 > ALARM_HIGH__2 &&
+            user_params.alarm_HIGH__2 > new_limit)
+           user_params.alarm_HIGH__2 = new_limit;
+
         board_status = BSTAT_ABOVE_INITIAL;
-        if (aver_2 > user_params.abs_HIGH__2
-         || aver_2 > (initial_glucose_2 + user_params.rel_HIGH__2))
+        if (aver_2 > user_params.alarm_HIGH__2)
            {
              set_pin(D, LED_RED);      // red LED on
              raise_alarm = true;
@@ -850,9 +865,15 @@ bool raise_alarm = false;
       }
    else   // glucose has decreased
       {
+        // maybe increase the lower alarm threshold again
+        //
+        const uint8_t new_limit = aver_2 - user_params.margin_LOW__2;
+        if (user_params.alarm_LOW__2 < ALARM_LOW__2 &&
+            user_params.alarm_LOW__2 < new_limit)
+            user_params.alarm_LOW__2 = new_limit;
+
         board_status = BSTAT_BELOW_INITIAL;
-        if (aver_2 < user_params.rel_LOW__2
-         || aver_2 < (initial_glucose_2 - user_params.rel_LOW__2))
+        if (aver_2 < user_params.alarm_LOW__2)
            {
              set_pin(B, LED_GREEN);    // green LED on
              raise_alarm = true;
@@ -870,7 +891,7 @@ bool raise_alarm = false;
          return 2000;           // then wait 2 seconds
       }
 
-   return 1000*int32_t(NORMAL_WAIT_SECONDS);
+   return 8000*int32_t(user_params.read_interval__8);
 }
 //-----------------------------------------------------------------------------
 int
@@ -895,17 +916,17 @@ const uint8_t calib = user_params.oscillator_calibration;
 #endif
 
    print_stringv("\n\n\nosc=x\x80\n", OSCCAL);
-   print_stringv("slope=\x90\n",      user_params.sensor_slope);
-   print_stringv("offset=\x90\n",     user_params.sensor_offset);
-   print_stringv("abs_HIGH=\x90\n",   user_params.abs_HIGH__2  << 1);
-   print_stringv("abs_LOW=\x90\n",    user_params.abs_LOW__2   << 1);
-   print_stringv("rel_HIGH=\x90\n",   user_params.rel_HIGH__2  << 1);
-   print_stringv("rel_LOW=\x90\n",    user_params.rel_LOW__2   << 1);
-   print_stringv("batt_1=\x90\n",     user_params.battery_1__8 << 3);
-   print_stringv("batt_2=\x90\n",     user_params.battery_2__8 << 3);
-   print_stringv("batt_3=\x90\n",     user_params.battery_3__8 << 3);
-   print_stringv("batt_4=\x90\n",     user_params.battery_4__8 << 3);
-   print_stringv("batt_5=\x90\n",     user_params.battery_5__8 << 3);
+   print_stringv("slope=\x90\n",       user_params.sensor_slope);
+   print_stringv("offset=\x90\n",      user_params.sensor_offset);
+   print_stringv("alarm_HIGH=\x90\n",  user_params.alarm_HIGH__2  << 1);
+   print_stringv("alarm_LOW=\x90\n",   user_params.alarm_LOW__2   << 1);
+   print_stringv("margin_HIGH=\x90\n", user_params.margin_HIGH__2 << 1);
+   print_stringv("margin_LOW=\x90\n",  user_params.margin_LOW__2  << 1);
+   print_stringv("batt_1=\x90\n",      user_params.battery_1__8   << 3);
+   print_stringv("batt_2=\x90\n",      user_params.battery_2__8   << 3);
+   print_stringv("batt_3=\x90\n",      user_params.battery_3__8   << 3);
+   print_stringv("batt_4=\x90\n",      user_params.battery_4__8   << 3);
+   print_stringv("batt_5=\x90\n",      user_params.battery_5__8   << 3);
 
 
    // transmit a glucose value of 0 as a restart indication and to

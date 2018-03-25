@@ -30,15 +30,17 @@ main(int, char *[])
    user_params.oscillator_calibration = CPU_CALIBRATION;
    user_params.sensor_slope           = SENSOR_SLOPE;
    user_params.sensor_offset          = SENSOR_OFFSET;
-   user_params.abs_HIGH__2            = ABSOLUTE_HIGH >> 1;
-   user_params.abs_LOW__2             = ABSOLUTE_LOW  >> 1;
-   user_params.rel_HIGH__2            = RELATIVE_HIGH >> 1;
-   user_params.rel_LOW__2             = RELATIVE_LOW  >> 1;
-   user_params.battery_1__8           = BATTERY_1 >> 3;
-   user_params.battery_2__8           = BATTERY_2 >> 3;
-   user_params.battery_3__8           = BATTERY_3 >> 3;
-   user_params.battery_4__8           = BATTERY_4 >> 3;
-   user_params.battery_5__8           = BATTERY_5 >> 3;
+   user_params.alarm_HIGH__2          = ALARM_HIGH__2;
+   user_params.alarm_LOW__2           = ALARM_LOW__2;
+   user_params.margin_HIGH__2         = MARGIN_HIGH__2;
+   user_params.margin_LOW__2          = MARGIN_LOW__2;
+   user_params.battery_1__8           = BATTERY_1__8;
+   user_params.battery_2__8           = BATTERY_2__8;
+   user_params.battery_3__8           = BATTERY_3__8;
+   user_params.battery_4__8           = BATTERY_4__8;
+   user_params.battery_5__8           = BATTERY_5__8;
+   user_params.read_error_retry__8    = READ_ERROR_RETRY__8;
+   user_params.read_interval__8       = READ_INTERVAL__8;
 
 const uint8_t * p = (const uint8_t *)&user_params;
    for (int u = 0; u < sizeof(user_params); ++u) putchar(*p++);

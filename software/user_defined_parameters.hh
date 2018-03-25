@@ -49,17 +49,17 @@ enum CPU_Calibration
    NO_CPU_CALIBRATION = 0xFF,   // no CPU calibration
 
 // CPU_CALIBRATION    = NO_CPU_CALIBRATION   // good luck!
-// CPU_CALIBRATION    = 0x46                 // PCB #1
-   CPU_CALIBRATION    = 0x3F                 // PCB #2
+   CPU_CALIBRATION    = 0x46                 // PCB #1
+// CPU_CALIBRATION    = 0x3F                 // PCB #2
 };
 
 /// alarm thresholds define at which glucose level an alarm is raised
 enum Alarm_thresholds
 {
-   ABSOLUTE_HIGH   = 250,   // mg/dl, beep if glucose > ABSOLUTE_HIGH
-   ABSOLUTE_LOW    =  80,   // mg/dl, beep if glucose < ABSOLUTE_LOW
-   RELATIVE_HIGH   =  70,   // mg/dl, beep if glucose > initial + RELATIVE_HIGH
-   RELATIVE_LOW    =  70,   // mg/dl, beep if glucose < initial - RELATIVE_LOW
+   ALARM_HIGH   = 250,   // mg/dl, beep if glucose > ALARM_HIGH
+   ALARM_LOW    =  66,   // mg/dl, beep if glucose < ALARM_LOW
+   MARGIN_HIGH  =  40,   // mg/dl, minimum between initial and limit_HIGH
+   MARGIN_LOW   =  20,   // mg/dl, minimum between initial and limit_LOW
 };
 
 /// how the raw 12-bit glucose sensor value translate to glucose in mg/dl
@@ -84,6 +84,13 @@ enum Battery_levels
    BATTERY_5 =  800,   // beeep 5 times (battery is full)
 };
 
+/// measurement intervals (seconds)
+enum
+{
+   READ_INTERVAL    = 600,   // read RFID every 10 minutes
+   READ_ERROR_RETRY =  60,   // retry after 60 seconds
+};
+
 //=============================================================================
 // ======== END OF USER-CONFIGURABLE PARAMETERS ===============================
 //=============================================================================
@@ -97,15 +104,33 @@ struct User_defined_parameters
    uint8_t oscillator_calibration;   //
    uint8_t sensor_slope;             //
     int8_t sensor_offset;            //
-   uint8_t abs_HIGH__2;              // >> 1
-   uint8_t abs_LOW__2;               // >> 1
-   uint8_t rel_HIGH__2;              // >> 1
-   uint8_t rel_LOW__2;               // >> 1
+   uint8_t alarm_HIGH__2;            // >> 1
+   uint8_t alarm_LOW__2;             // >> 1
+   uint8_t margin_HIGH__2;           // >> 1
+   uint8_t margin_LOW__2;            // >> 1
    uint8_t battery_1__8;             // >> 3
    uint8_t battery_2__8;             // >> 3
    uint8_t battery_3__8;             // >> 3
    uint8_t battery_4__8;             // >> 3
    uint8_t battery_5__8;             // >> 3
+   uint8_t read_error_retry__8;      // >> 3
+   uint8_t read_interval__8;         // >> 3
+};
+
+/// integers > 255 shifted so that they fit into a uint8_t
+enum
+{
+   ALARM_HIGH__2       =  ALARM_HIGH >> 1,
+   ALARM_LOW__2        =  ALARM_LOW  >> 1,
+   MARGIN_HIGH__2      = MARGIN_HIGH >> 1,
+   MARGIN_LOW__2       = MARGIN_LOW  >> 1,
+   BATTERY_1__8        = BATTERY_1   >> 3,
+   BATTERY_2__8        = BATTERY_2   >> 3,
+   BATTERY_3__8        = BATTERY_3   >> 3,
+   BATTERY_4__8        = BATTERY_4   >> 3,
+   BATTERY_5__8        = BATTERY_5   >> 3,
+   READ_ERROR_RETRY__8 = READ_ERROR_RETRY >> 3,
+   READ_INTERVAL__8    = READ_INTERVAL >> 3,
 };
 
 #endif // __USER_DEFINED_PARAMETERS_DEFINED__
