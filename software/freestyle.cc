@@ -927,6 +927,8 @@ const uint8_t calib = user_params.oscillator_calibration;
    print_stringv("batt_3=\x90\n",      user_params.battery_3__8   << 3);
    print_stringv("batt_4=\x90\n",      user_params.battery_4__8   << 3);
    print_stringv("batt_5=\x90\n",      user_params.battery_5__8   << 3);
+   print_stringv("read_error_retry=\x90 sec\n", user_params.read_error_retry__8 << 3);
+   print_stringv("read_interval=\x90 sec\n",  user_params.read_interval__8 << 3);
 
 
    // transmit a glucose value of 0 as a restart indication and to
