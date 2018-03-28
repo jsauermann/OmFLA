@@ -5,7 +5,7 @@
 # PROGRAMMER = avrisp2 -B 4   // too low for built-in clock
 # PROGRAMMER = avrisp2 -B 8
   PROGRAMMER = avrisp2 -B 10
-#P ROGRAMMER = avrisp2 -B 100
+# PROGRAMMER = avrisp2 -B 100
 
 # PROGRAMMER = xil
 
@@ -17,8 +17,11 @@ PART = attiny4313
 ################################################33
 # FUSE selection...
 #
-FUSEL = 0x62
-FUSEL_DESCR = internal 4 MHz oscillator ÷1
+FUSEL_XTAL    = 0x6D
+FUSEL_XTAL_DESCR = external crystal ÷1
+
+FUSEL_RC4 = 0x62
+FUSEL_RC4_DESCR = internal 4 MHz oscillator ÷1
 
 TOOLS = /usr/lib/avr/bin
 CXX = $(TOOLS)/avr-g++ -mmcu=$(PART)
@@ -61,7 +64,8 @@ help:
 	@echo "    flash_cal:    all + flash the CPU calibration program"
 	@echo "    signature:    read and show device signature"
 	@echo "    fusel:        read and show low fuse"
-	@echo "    wfusel:       write low fuse ($(FUSEL)= $(FUSEL_DESCR))"
+	@echo "    wfusel_XTAL:  write low fuse ($(FUSEL_XTAL)= $(FUSEL_XTAL_DESCR))"
+	@echo "    wfusel_RC4:   write low fuse ($(FUSEL_RC4)= $(FUSEL_RC4_DESCR))"
 	@echo "    eeprom:       read and show the device EEPROM"
 	@echo "    weeprom:      write eeprom.data to device EEPROM"
 	@echo "    calibration:  read and show calibration values"
@@ -157,8 +161,11 @@ calibration:
 #                   0x62 internal 4 MHz oscillator                 ÷8
 #                   0x68 external crystal (hangs if not present)   ÷8
 #                   0x28 external crystal, output on pin 6         ÷8
-wfusel:
-	$(DUDE) -F -U lfuse:w:$(FUSEL):m
+wfusel_XTAL:
+	$(DUDE) -F -U lfuse:w:$(FUSEL_XTAL):m
+
+wfusel_RC4:
+	$(DUDE) -F -U lfuse:w:$(FUSEL_RC4):m
 
 # default high fuse: 0xDF
 # wfuseh:

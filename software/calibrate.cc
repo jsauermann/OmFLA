@@ -39,7 +39,10 @@
       used for other crystal frequencies as well by scaling SOFT_COUNT
       accordingly.
 
-   3b. is the method choosen by OmFLA
+   3b. is the method currently choosen by OmFLA. Recent current measurements
+       have shown, though, that the extra current consumed by a crystal is
+       only about 10% of the total current, so this choice will soon be
+       reconsidered.
 
    Macro VARY_COUNT below selects if the SOFT_COUNT for the UART or the
    built-in 4 MHz RC oscillator shall be calibrated.
@@ -47,10 +50,11 @@
 
 #define VARY_COUNT 0
 
-// # define F_CPU 3686400
 # define F_CPU 4000000
+// # define F_CPU 3686400
 
 #define SOFT_BAUD 57600
+// #define SOFT_BAUD 9600
 #define SOFT_PORT_1 PORTB
 #define SOFT_PBIT_1 B_PROG_MISO
 #define SOFT_PORT_2 PORTD
@@ -67,11 +71,22 @@
 #error "__AVR_ATtiny4313__ is not defined !!!"
 #endif
 
-enum { SOFT_COUNT = (F_CPU / SOFT_BAUD)/4 - 2 };
+enum CPU_cycles
+   {
+     DELAY_LOOP_LEN = 3,   // one iteration of _delay_loop_1()
+     DELAY_PREAMBLE = 13,   // set/clear bit etc
+                                                         // 9600   57600
+     CYCLES_PER_BIT = F_CPU / SOFT_BAUD,                 //  384      64
+     DELAY_PER_BIT  = CYCLES_PER_BIT - DELAY_PREAMBLE,   //  371      51
+     SOFT_COUNT     = DELAY_PER_BIT/DELAY_LOOP_LEN,      //  123      17
+
+     SOFT_MIN   = ( 4*SOFT_COUNT)/10,   // 40 % of SOFT_COUNT
+     SOFT_MAX   = (25*SOFT_COUNT)/10,   // 250 % of SOFT_COUNT
+   };
 
 static bool soft_mode = true;
-static uint8_t soft_count = SOFT_COUNT;
-static uint8_t initial_calib = 0;
+static uint16_t soft_count = SOFT_COUNT;
+static uint8_t  initial_calib = 0;
 static uint16_t batt_result = 0;
 
 enum
@@ -192,7 +207,7 @@ soft_char(uint8_t ch)
    //             ║║     ╔╦══════════  8 data bits
    //             ║║     ║║     ╔════  start bit
 int16_t bits = (0xFF00 | ch) << 1;
-   for (uint8_t j = 0; j < 12; ++j)   // 1 start _ 8 data + 3 stop
+   for (uint8_t j = 0; j < 12; ++j)   // 1 start + 8 data + 3 stop
        {
          if (bits & 1)
             {
@@ -203,6 +218,7 @@ int16_t bits = (0xFF00 | ch) << 1;
             {
               SOFT_PORT_1 &= ~SOFT_PBIT_1;
               SOFT_PORT_2 &= ~SOFT_PBIT_2;
+              SOFT_PORT_2 &= ~SOFT_PBIT_2;   // compensate sbrs skew
             }
          bits >>= 1;
          _delay_loop_1(soft_count);
@@ -330,12 +346,15 @@ const uint8_t * e = 0;
    battery_test();
    print_string("\n\nF_CPU=");          print_dec(F_CPU);
    print_string(", soft_mode=");        print_dec(soft_mode);
+   print_string(", SOFT_COUNT=");       print_dec(SOFT_MIN);
+   print_string("/");                   print_dec(SOFT_COUNT);
+   print_string("/");                   print_dec(SOFT_MAX);
    print_string(", soft_count=");       print_dec(soft_count);
    print_string(", OSCCAL=");           print_hex2(OSCCAL);
-   print_string(", battery=");          print_dec(batt_result);
+   print_string("\n    battery=");      print_dec(batt_result);
    print_string(", initial OSCCAL=");   print_hex2(initial_calib);
    print_string(", eeprom=");
-   for (uint8_t j = 0; j < 5; ++j)
+   for (uint8_t j = 0; j < 6; ++j)
        {
          print_hex2(eeprom_read_byte(e++));
          print_string(" ");
@@ -347,7 +366,6 @@ int
 main(int, char *[])
 {
    initial_calib = OSCCAL;
-// OSCCAL = 0x26;   // good for 4 MHz and 9600 baud
 
    init_hardware();
 
@@ -362,12 +380,10 @@ main(int, char *[])
          PIND = D_LED_RED;   // toggle red LED
 
 #if VARY_COUNT
-         enum { CAL_FROM = (4*SOFT_COUNT)/5,     //  80% of SOFT_COUNT
-                CAL_TO   = (6*SOFT_COUNT)/5 };   // 120% of SOFT_COUNT
-         for (uint8_t cal = CAL_FROM; cal < CAL_TO; ++cal)
+         for (soft_count = SOFT_MIN; soft_count <= SOFT_MAX; ++soft_count)
              {
-               soft_count = cal;
                doit();
+               _delay_ms(1);
              }
 #else
          for (uint8_t cal = 0; cal < 128; ++cal)

@@ -162,4 +162,20 @@ init_RFID_reader()
    write_register(NFC_TARGET_LEVEL, 0x00);   // fix TI bug
 }
 //-----------------------------------------------------------------------------
+static void
+RF_Off()
+{
+   write_register(CHIP_STATE_CONTROL, CHIP_STATE_RF_Off);
+}
+//-----------------------------------------------------------------------------
+static uint8_t
+read_ISR()
+{
+uint8_t cmd[] = { uint8_t(READ | CONT | 0x0C),
+                  uint8_t(READ | 0x0D),   // quirk
+                  0 };
+   SPI_transfer(cmd, cmd, sizeof(cmd));
+   return cmd[1];
+}
+//-----------------------------------------------------------------------------
 

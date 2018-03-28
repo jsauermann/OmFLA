@@ -71,7 +71,18 @@
 # define SOFT_PORT_2 PORTD
 # define SOFT_PBIT_2 D_TCM_TxD
 
-enum { SOFT_COUNT = (F_CPU / SOFT_BAUD)/4 - 2 };
+enum CPU_cycles
+   {
+     DELAY_LOOP_LEN = 3,   // one iteration of _delay_loop_1()
+     DELAY_PREAMBLE = 13,   // set/clear bit etc
+                                                         // 9600   57600
+     CYCLES_PER_BIT = F_CPU / SOFT_BAUD,                 //  384      64
+     DELAY_PER_BIT  = CYCLES_PER_BIT - DELAY_PREAMBLE,   //  371      51
+     SOFT_COUNT     = DELAY_PER_BIT/DELAY_LOOP_LEN,      //  123      17
+   };
+
+static uint16_t soft_count = SOFT_COUNT;
+
 #endif
 
 #define F_IO  F_CPU
@@ -232,9 +243,10 @@ int16_t bits = (0xFF00 | ch) << 1;
             {
               SOFT_PORT_1 &= ~SOFT_PBIT_1;
               SOFT_PORT_2 &= ~SOFT_PBIT_2;
+              SOFT_PORT_2 &= ~SOFT_PBIT_2;   // compensate sbrs skew
             }
          bits >>= 1;
-         _delay_loop_1(SOFT_COUNT);
+         _delay_loop_1(soft_count);
        }
 
 # endif
@@ -450,29 +462,16 @@ beep(uint8_t repeat, uint16_t ms_on, uint8_t ms_off)
       }
 }
 //-----------------------------------------------------------------------------
-static uint8_t
-read_ISR()
-{
-uint8_t cmd[] = { uint8_t(READ | CONT | 0x0C),
-                  uint8_t(READ | 0x0D),   // quirk
-                  0 };
-   SPI_transfer(cmd, cmd, sizeof(cmd));
-   return cmd[1];
-}
-//-----------------------------------------------------------------------------
-static void
-RF_Off()
-{
-   write_register(CHIP_STATE_CONTROL, CHIP_STATE_RF_Off);
-}
-//-----------------------------------------------------------------------------
 #define MAX_FIFO 10
 
 const uint8_t fifo[1 + MAX_FIFO] = { READ | CONT | FIFO, 0 };
 uint8_t rx_data[sizeof(fifo)];
 
-/// return glucose in mg% ÷ 2
-static uint8_t
+static uint8_t gluco2_vec[15];   // glucose values (divided by 2!)
+static uint8_t gluco_idx = 0;
+
+/// store glucose (in mg% ÷ 2) in gluco2_vec
+static void
 gluco2(uint8_t rx_offset)
 {
 const uint16_t h = rx_data[rx_offset + 3] & 0x0F;   // upper 4 bits
@@ -480,30 +479,34 @@ const uint16_t l = rx_data[rx_offset + 2];          // lower 8 bits
 const uint32_t raw_sensor = h << 8 | l;           // total 12 bits
 const uint16_t glucose = user_params.sensor_offset
                        + ((raw_sensor * user_params.sensor_slope) / 1000);
-   return glucose >> 1;
+
+   print_stringv("raw[\x90", gluco_idx);
+   print_stringv("] = \x90",  raw_sensor);
+   print_stringv(" -> \x90 mg%\n",  glucose);
+
+   gluco2_vec[gluco_idx++] = glucose >> 1;
 }
-
-int8_t gluco2_vec[16];   // glucose ÷ 2 values
-uint8_t gluco_idx = 0;
-
+//-----------------------------------------------------------------------------
+/// sort gluco2_vec (15 items)
 void
 gluco_sort()
 {
-   for (int8_t base = 0; base < 15; ++base)
+   for (uint8_t base = 0; base < (sizeof(gluco2_vec) - 1); ++base)
        {
           uint8_t smallest = base;
-          for (uint8_t j = base + 1; j < 16; ++j)
+          for (uint8_t j = base + 1; j < sizeof(gluco2_vec); ++j)
               {
                 if (gluco2_vec[j] < gluco2_vec[smallest])   smallest = j;
               }
 
+         // exchange gluco2_vec[base] and gluco2_vec[smallest]
+         //
          const uint8_t base_val = gluco2_vec[base];
          gluco2_vec[base] = gluco2_vec[smallest];
          gluco2_vec[smallest] = base_val;
        }
 }
-
-static void
+static bool
 decode_Block(uint8_t block)
 {
 const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
@@ -532,8 +535,8 @@ const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
 
    // the trend table is contained in blocks 4...15
    //
-   if (block < 3)     return;
-   if (block >= 16)   return;
+   if (block < 3)     return false;   // OK
+   if (block >= 16)   return false;   // OK
 
    print_stringv("blk \x90  [", block);
    print_stringv("\x90] ", 8*block);
@@ -542,32 +545,32 @@ const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
 
    if (block == 3)
       {
-        hist_idx  = rx_data[6];    // mirrored!
-        trend_idx = rx_data[5];    // mirrored!
+        hist_idx  = rx_data[5];    // mirrored!
+        trend_idx = rx_data[4];    // mirrored!
         print_stringv("  trend_idx: #\x90",  trend_idx);
         print_stringv(", hist_idx: #\x90\n", hist_idx);
-        return;
+        return false;   // OK
       }
 
    switch(block % 3)
       {
         case 1: // AAAA-BBBB-CCCC-AAAA
                 print_string(" ABCA\n");
-                gluco2_vec[gluco_idx++] = gluco2(2);   // FIFO is mirrored!
+                gluco2(2);   // FIFO is mirrored!
                 break;
 
         case 2: // CCCC-AAAA-BBBB-CCCC
                 print_string(" CABC\n");
-                gluco2_vec[gluco_idx++] = gluco2(6);   // FIFO is mirrored!
-                gluco2_vec[gluco_idx++] = gluco2(0);   // FIFO is mirrored!
+                gluco2(6);   // FIFO is mirrored!
+                gluco2(0);   // FIFO is mirrored!
                 break;
 
         case 0: // BBBB-CCCC-AAAA-BBBB
                 print_string(" BCAB\n");
-                gluco2_vec[gluco_idx++] = gluco2(4);   // FIFO is mirrored!
+                gluco2(4);   // FIFO is mirrored!
       }
 
-   return;
+   return false;   // OK
 
 error_out:
    beep(3, 200, 100);
@@ -575,6 +578,7 @@ error_out:
    if ((block % 3) == 1)   gluco2_vec[gluco_idx++] = 0;   // 2 values per block
    gluco2_vec[gluco_idx++] = 0;                       // 1 more gluco2_vec
    print_stringv("    failed block: #\x90\n", block);
+   return true;   // error
 }
 //-----------------------------------------------------------------------------
 const uint8_t setup[] =
@@ -612,7 +616,7 @@ uint8_t iso_read_block[8] =
      0,         // block number
    };
 
-bool
+static bool
 read_Block(uint8_t block)
 {
    // at this point we expect: FIFO empty and interrupts off.
@@ -801,10 +805,10 @@ doit(uint16_t j)
    gluco_idx = 0;
 
 bool errors;
-   for (uint8_t b = 3; b < 16; ++b)
+   for (uint8_t b = 3; b < 15; ++b)
        {
-         if ((errors = read_Block(b)))   break;
-         decode_Block(b);
+         if ((errors = read_Block(b)
+                    || decode_Block(b)))   break;
          read_ISR();   // clear interrupt register
        }
    RF_Off();
@@ -814,16 +818,17 @@ bool errors;
          board_status = BSTAT_RFID_ERROR;
          transmit_glucose(0);
          beep(3, 100, 100);
-         return 8000*int32_t(user_params.read_interval__8);
+         return 8000*int32_t(user_params.read_error_retry__8);
       }
 
    gluco_sort();
 
-   /// compute the average of the 10 middle glocose values...
+   /// compute the average of the 9 middle glucose values...
    //
+   enum { end = sizeof(gluco2_vec) - 3 };
 uint16_t aver_2 = 0;
-   for (uint8_t j = 3; j < 13; ++j)   aver_2 += gluco2_vec[j];
-   aver_2 /= 10;
+   for (int8_t j = 3; j < end; ++j)  aver_2 += gluco2_vec[j];
+   aver_2 /= sizeof(gluco2_vec) - 3;
 
    print_stringv("glucose: \x90\n", 2*aver_2);   // aver_2 is halved!
 
@@ -843,9 +848,16 @@ bool raise_alarm = false;
         const uint8_t amin_2 = initial_glucose_2 - user_params.margin_LOW__2;
 
         if (user_params.alarm_LOW__2 > amin_2)
-           user_params.alarm_LOW__2 = amin_2;
+           {
+             user_params.alarm_LOW__2 = amin_2;
+           }
         if (user_params.alarm_HIGH__2 < amax_2)
-           user_params.alarm_HIGH__2 = amax_2;
+           {
+             user_params.alarm_HIGH__2 = amax_2;
+           }
+
+        print_stringv("ini-low: \x90\n", 2*user_params.alarm_LOW__2);
+        print_stringv("ini-high: \x90\n", 2*user_params.alarm_HIGH__2);
       }
    else if (aver_2 >= initial_glucose_2)   // glucose has increased
       {
@@ -854,7 +866,10 @@ bool raise_alarm = false;
         const uint8_t new_limit = aver_2 + user_params.margin_HIGH__2;
         if (user_params.alarm_HIGH__2 > ALARM_HIGH__2 &&
             user_params.alarm_HIGH__2 > new_limit)
-           user_params.alarm_HIGH__2 = new_limit;
+           {
+             user_params.alarm_HIGH__2 = new_limit;
+             print_stringv("new-high: \x90\n", 2*new_limit);
+           }
 
         board_status = BSTAT_ABOVE_INITIAL;
         if (aver_2 > user_params.alarm_HIGH__2)
@@ -870,7 +885,10 @@ bool raise_alarm = false;
         const uint8_t new_limit = aver_2 - user_params.margin_LOW__2;
         if (user_params.alarm_LOW__2 < ALARM_LOW__2 &&
             user_params.alarm_LOW__2 < new_limit)
-            user_params.alarm_LOW__2 = new_limit;
+           {
+             user_params.alarm_LOW__2 = new_limit;
+             print_stringv("new-low: \x90\n", 2*new_limit);
+           }
 
         board_status = BSTAT_BELOW_INITIAL;
         if (aver_2 < user_params.alarm_LOW__2)
@@ -927,8 +945,10 @@ const uint8_t calib = user_params.oscillator_calibration;
    print_stringv("batt_3=\x90\n",      user_params.battery_3__8   << 3);
    print_stringv("batt_4=\x90\n",      user_params.battery_4__8   << 3);
    print_stringv("batt_5=\x90\n",      user_params.battery_5__8   << 3);
-   print_stringv("read_error_retry=\x90 sec\n", user_params.read_error_retry__8 << 3);
-   print_stringv("read_interval=\x90 sec\n",  user_params.read_interval__8 << 3);
+   print_stringv("read_error_retry=\x90 sec\n",
+                                       user_params.read_error_retry__8 << 3);
+   print_stringv("read_interval=\x90 sec\n\n",
+                                       user_params.read_interval__8 << 3);
 
 
    // transmit a glucose value of 0 as a restart indication and to

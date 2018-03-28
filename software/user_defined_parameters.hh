@@ -50,9 +50,11 @@ enum CPU_Calibration
 
 // CPU_CALIBRATION    = NO_CPU_CALIBRATION   // good luck!
 // CPU_CALIBRATION    = 0x46                 // PCB #1
-// CPU_CALIBRATION    = 0x3F                 // PCB #2
-   CPU_CALIBRATION    = 0x40                 // PCB #3
-// CPU_CALIBRATION    = 0x32                 // PCB #4
+   CPU_CALIBRATION    = 0x3F                 // PCB #2: Ralf
+// CPU_CALIBRATION    = 0x40                 // PCB #3
+
+// CPU_CALIBRATION    = 0x4C                 // PCB #4: 47-51 5V USB
+                                             //         46-50 battery
 };
 
 /// alarm thresholds define at which glucose level an alarm is raised
@@ -89,7 +91,7 @@ enum Battery_levels
 /// measurement intervals (seconds)
 enum
 {
-   READ_INTERVAL    = 600,   // read RFID every 10 minutes
+   READ_INTERVAL    = 300,   // read RFID every 5 minutes
    READ_ERROR_RETRY =  60,   // retry after 60 seconds
 };
 
