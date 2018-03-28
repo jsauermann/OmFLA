@@ -828,7 +828,7 @@ bool errors;
    enum { end = sizeof(gluco2_vec) - 3 };
 uint16_t aver_2 = 0;
    for (int8_t j = 3; j < end; ++j)  aver_2 += gluco2_vec[j];
-   aver_2 /= sizeof(gluco2_vec) - 3;
+   aver_2 /= (sizeof(gluco2_vec) - 6);
 
    print_stringv("glucose: \x90\n", 2*aver_2);   // aver_2 is halved!
 
