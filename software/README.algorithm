@@ -1,0 +1,111 @@
+
+The OmFLA device uses the following algorithm to compute glucose levels.
+
+A. Computation of the current glucose level
+-------------------------------------------
+
+1. The glucose sensor contains two tables: a "trend table" which is updated
+every minute, and a "history table" which is updated every 15 minutes. Both
+tables are ring buffers.
+
+2. Each table contains 3 different measurements, say A, B, and C. The
+measurements are interleaved in a slightly irregular way. Every table
+update changes 4 measurements, so that, for example one update could have
+one A measurement while another has two. As of this wiring, we know that
+measurement "C" some a "raw" glucose value, and that one of the remaining
+measurements "A" and "B" is somehow related to temperature.
+
+3. We ignore the history table entirely, because its values are too old for
+alarm purposes.
+
+4. every 5 minutes (the interval can be configured by the user) we read the
+entire trend table. The trend table contains 14 raw glucose values; the A and
+B measurements in the table are being ignored because we simply don't know
+what they are. The 3 upper and 3 lower raw values are discarded, so that 9 raw
+glucose values remain.
+
+5. The average of the 9 raw values is computed.
+
+6. The average is then translated to mg/dl (aka. mg%) by:
+
+    glucose (mg%) = SENSOR_OFFSET + SENSOR_SLOPE/1000 * raw_value
+
+where:
+
+SENSOR_OFFSET = -20
+SENSOR_SLOPE  = 130
+
+Both SENSOR_OFFSET and SENSOR_SLOPE can be configured by the user.
+Finally, the resulting glucose value is compared against and upper and
+a lower alarm threshold to decide if an alarm shall be raised.
+
+B. Alarm thresholds
+-------------------
+The glucose levels at which an alarm is raised is controlled by 4 parameters:
+
+   ALARM_HIGH   = 250,   // mg/dl, beep if glucose > ALARM_HIGH
+   ALARM_LOW    =  66,   // mg/dl, beep if glucose < ALARM_LOW
+   MARGIN_HIGH  =  40,   // mg/dl, minimum between initial and limit_HIGH
+   MARGIN_LOW   =  20,   // mg/dl, minimum between initial and limit_LOW
+
+All 4 parameters are in mg% and can be configured by the user.
+
+B1. Normally the user should aim at a glucose level between
+(ALARM_LOW + MARGIN_LOW) and (ALARM_HIGH - MARGIN_HIGH) when the OmFLA device
+is switched ON. With the default values above (which are used unless the user
+configures them differently) this is a range from 66+20=86 mg% to 250-40=210 mg%.
+ if the user uses the default values above. If the user switches the device ON
+and the first successful glucose measurement lies between 86 and 210 mg% then
+the device raises an alarm when a subsequent glucose measurements is below
+ALARM_LOW (55) or above ALARM_HIGH (250).
+
+B2. If, however, the initial glucose level is below
+(ALARM_LOW + MARGIN_LOW) = 86, when the device is switched on, then the lower
+alarm threshold is reduced from ALARM_LOW = 66 to
+(initial glucose - MARGIN_LOW) < 66. This is to avoid false alarms when the
+device is started at a low glucose level. It is assumed that the user has
+taken measures to increase the glucose, but that these measures have not yet
+shown an effect. If that happens (the glucose level rises again) then the lower
+alarm threshold is raised again until it reaches ALARM_LOW = 66 again. At this
+point the device is back to normal mode. see B1.
+
+B3. Likewise, if the initial glucose level is above
+(ALARM_HIGH - MARGIN_HIGH) = 210, when the device is switched on, then the upper
+alarm threshold is increased from ALARM_HIGH = 250 to
+(initial glucose + MARGIN_HIGH) > 250. This is to avoid false alarms when the
+device is started at a high glucose level. It is assumed that the user has
+taken measures to decrease the glucose, but that these measures have not yet
+shown an effect. If that happens (the glucose level decreases again) then the
+lower alarm threshold is lowered again until it reaches
+ALARM_HIGH = 250 again. At this point the device is back to normal mode. see B1.
+
+C. Implementation detail
+------------------------
+
+In order to save program bytes, all glucose levels X are internally stored as
+X/2 so that the fit into a unsigned byte (aka. uint8_t). The values 0-255 of
+a byte corresponds to glucose-levels 0-510 mg%. This is important to keep in
+mind when configuring the EEPROM bytes (which contain all the user-configurable
+values of the OmFLA device.
+
+For example, in order to set ALARM_HIGH to 240, the corresponding EEPROM must
+be set to 120 = 0x78. If the debug image is used, then all user defined
+parameters in the EEPROM are displayed like this:
+
+osc=x4C
+slope=130
+offset=-20
+alarm_HIGH=250
+alarm_LOW=66
+margin_HIGH=40
+margin_LOW=20
+batt_1=1200
+batt_2=1096
+batt_3=1000
+batt_4=896
+batt_5=800
+read_error_retry=56 sec
+read_interval=296 sec
+
+Baudrate is 57600 8N1, active low TTL signal.
+
