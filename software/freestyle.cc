@@ -104,11 +104,13 @@ static uint16_t cache = 0;
 #include <avr/sleep.h>
 #include <util/delay.h>
 
+uint16_t pass = 0;
+
 #if EEPROM_CACHE
 static void
 write_cache(uint8_t value)
 {
-   eeprom_write_byte((uint8_t *)cache++, value);
+   if (pass > 1)   eeprom_write_byte((uint8_t *)cache++, value);
 }
 #else
 # define write_cache(value)
@@ -803,7 +805,7 @@ battery_test()
 //
 // one pass, return the number of ms to sleep after this pass
 int32_t
-doit(uint16_t j)
+doit()
 {
    // blink according to board_status
    //
@@ -815,7 +817,7 @@ doit(uint16_t j)
 
    // battery_test() sets batt_result to roughlu 800 (full battery) ...
    // 1200 (empty battery). To save bytes we scale batt_result down to uint8_t.
-   if (j == 0)   // power ON
+   if (pass == 0)   // power ON
       {
         const uint8_t br = batt_result >> 3;
         uint8_t battery_beeps = 5;
@@ -828,7 +830,7 @@ doit(uint16_t j)
         beep(battery_beeps, 200, 200);
       }
 
-   print_stringv("j=\x90", j);
+   print_stringv("pass=\x90", pass);
    print_stringv(" iniB=\x80", initial_B);
    print_stringv(" stat=\x80", board_status);
    print_stringv(" batt=\x90\n", batt_result);
@@ -871,7 +873,7 @@ uint16_t aver_2 = 0;
    aver_2 /= (sizeof(gluco2_vec) - 6);
 
 #if EEPROM_CACHE
-   write_cache(j);
+   write_cache(pass);
    write_cache(aver_2);
    write_cache(initial_glucose_2);
    write_cache(user_params.alarm_LOW__2);
@@ -1009,10 +1011,10 @@ const uint8_t calib = user_params.oscillator_calibration;
    //
    transmit_glucose(0);
 
-   for (uint16_t j = 0;; ++j)
+   for (pass = 0;; ++pass)
        {
 //       dump_registers();
-         int32_t wait = doit(j);
+         int32_t wait = doit();
          while (wait > 0)   wait -= sleep_ms(wait);
        }
 }
