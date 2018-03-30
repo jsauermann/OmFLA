@@ -37,30 +37,33 @@
 // This is needed so that the entire program fits into the 4k flash memory
 // of an Atmel 4313 chip.
 //
-#if       MODE == 0   // debug output on TxD
-#  define ENOCEAN     0
-#  define HARD_UART   0
-#  define SOFT_UART   1
-#  define FANCY_PRINT 1
-#elif     MODE == 1   // TxD connected to TCM 310
-# define  ENOCEAN     1
-# define  HARD_UART   1
-#  define SOFT_UART   0
-# define  FANCY_PRINT 0
-#elif     MODE == 2   // TxD not used
-# define  ENOCEAN     0
-# define  HARD_UART   0
-#  define SOFT_UART   0
-# define  FANCY_PRINT 0
-#else                 // illegal
+#if       MODE == 0    // debug output on TxD
+#  define ENOCEAN      0
+#  define HARD_UART    0
+#  define SOFT_UART    1
+#  define FANCY_PRINT  1
+#  define EEPROM_CACHE 0
+#elif     MODE == 1    // TxD connected to TCM 310
+# define  ENOCEAN      1
+# define  HARD_UART    1
+# define SOFT_UART     0
+# define  FANCY_PRINT  0
+#  define EEPROM_CACHE 1
+#elif     MODE == 2    // TxD not used
+# define  ENOCEAN      0
+# define  HARD_UART    0
+# define SOFT_UART     0
+# define  FANCY_PRINT  0
+# define EEPROM_CACHE  1
+#else                  // illegal
 # error "MODE must be 0, 1, or 2 !"
 #endif
 
 #if HARD_UART
-# define F_CPU 3686400      // with calibration for 57600 baud
+# define F_CPU 3686400      // with Xtal or calibration to 3.3634 MHz
 # define  CPU_CALIB 0x3B
 #else
-# define F_CPU 4000000      // without calibration for 57600 baud
+# define F_CPU 4000000      // with internal 4.0 MHz RC oscillator
 # define  CPU_CALIB 0x26
 #endif
 
@@ -85,6 +88,13 @@ static uint16_t soft_count = SOFT_COUNT;
 
 #endif
 
+enum EERPROM_addresses
+{
+   USER_PARAMS  = 0,      // copy of user_params (14 bytes)
+   SENSOR_Cache = 0x20,   // blocks 4..14 of the sensor (11 byte per block)
+};
+
+static uint16_t cache = 0;
 #define F_IO  F_CPU
 
 #include <avr/io.h>
@@ -94,6 +104,17 @@ static uint16_t soft_count = SOFT_COUNT;
 #include <avr/sleep.h>
 #include <util/delay.h>
 
+#if EEPROM_CACHE
+static void
+write_cache(uint8_t value)
+{
+   eeprom_write_byte((uint8_t *)cache++, value);
+}
+#else
+# define write_cache(value)
+#endif
+
+/// a 1:1 copy of the EEPROM data, initialized at startup
 User_defined_parameters user_params;
 
 #ifndef __AVR_ATtiny4313__
@@ -121,11 +142,13 @@ User_defined_parameters user_params;
 
 #if ENOCEAN
 static void disable_enocean();
-static void enable_enocean();
 static void transmit_glucose(uint8_t gluco_2);
+static void transmit_block(uint8_t block);
 static uint8_t crc = 0;
 #else
-static void transmit_glucose(uint8_t gluco_2) {}
+# define disable_enocean()
+# define  transmit_glucose(gluco_2)
+#  define transmit_block(block)
 #endif
 
 #define get_pin(port, bit)    (PIN  ## port &    port ## _ ## bit ? 0xFF : 0x00)
@@ -329,6 +352,10 @@ sleep_ms(uint32_t milli_secs)
    return milli_secs;
 }
 //-----------------------------------------------------------------------------
+#define MAX_FIFO 10
+
+#include "RFID_functions.cc"
+
 #if ENOCEAN
 # include "enocean.cc"
 #endif
@@ -427,8 +454,6 @@ ISR(ANA_COMP_vect)
    batt_result = TCNT1;
 }
 //-----------------------------------------------------------------------------
-#include "RFID_functions.cc"
-
 static void
 print_hex1(uint8_t ch)
 {
@@ -452,6 +477,8 @@ print_hex2(uint8_t ch)
 inline void
 beep(uint8_t repeat, uint16_t ms_on, uint8_t ms_off)
 {
+   if ((initial_B & B_PROG_MOSI) == 0)   return;
+
 // print_stringv("beep \x90\n", ms_on);
    for (int j = 0; j < repeat; ++j)
       {
@@ -462,11 +489,6 @@ beep(uint8_t repeat, uint16_t ms_on, uint8_t ms_off)
       }
 }
 //-----------------------------------------------------------------------------
-#define MAX_FIFO 10
-
-const uint8_t fifo[1 + MAX_FIFO] = { READ | CONT | FIFO, 0 };
-uint8_t rx_data[sizeof(fifo)];
-
 static uint8_t gluco2_vec[15];   // glucose values (divided by 2!)
 static uint8_t gluco_idx = 0;
 
@@ -506,6 +528,7 @@ gluco_sort()
          gluco2_vec[smallest] = base_val;
        }
 }
+//-----------------------------------------------------------------------------
 static bool
 decode_Block(uint8_t block)
 {
@@ -541,7 +564,9 @@ const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
    print_stringv("blk \x90  [", block);
    print_stringv("\x90] ", 8*block);
 
+#if !ENOCEAN
    for (int j = 9; j >= 2; --j)   print_hex2(rx_data[j]);
+#endif
 
    if (block == 3)
       {
@@ -551,6 +576,13 @@ const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
         print_stringv(", hist_idx: #\x90\n", hist_idx);
         return false;   // OK
       }
+
+#if EEPROM_CACHE
+   write_cache(hist_idx);
+   write_cache(trend_idx);
+   write_cache(block);
+   for (int j = 9; j >= 2; --j)   write_cache(rx_data[j]);
+#endif
 
    switch(block % 3)
       {
@@ -797,7 +829,7 @@ doit(uint16_t j)
       }
 
    print_stringv("j=\x90", j);
-// print_stringv(" iniB=\x80", initial_B);
+   print_stringv(" iniB=\x80", initial_B);
    print_stringv(" stat=\x80", board_status);
    print_stringv(" batt=\x90\n", batt_result);
 
@@ -805,6 +837,7 @@ doit(uint16_t j)
    gluco_idx = 0;
 
 bool errors;
+   cache = SENSOR_Cache;
    for (uint8_t b = 3; b < 15; ++b)
        {
          if ((errors = read_Block(b)
@@ -817,9 +850,16 @@ bool errors;
       {
          board_status = BSTAT_RFID_ERROR;
          transmit_glucose(0);
+         disable_enocean();
          beep(3, 100, 100);
          return 8000*int32_t(user_params.read_error_retry__8);
       }
+
+#if EEPROM_CACHE and ENOCEAN
+   enable_enocean();
+   for (uint8_t b = 4; b < 15; ++b)   transmit_block(b);
+   disable_enocean();
+#endif
 
    gluco_sort();
 
@@ -829,6 +869,14 @@ bool errors;
 uint16_t aver_2 = 0;
    for (int8_t j = 3; j < end; ++j)  aver_2 += gluco2_vec[j];
    aver_2 /= (sizeof(gluco2_vec) - 6);
+
+#if EEPROM_CACHE
+   write_cache(j);
+   write_cache(aver_2);
+   write_cache(initial_glucose_2);
+   write_cache(user_params.alarm_LOW__2);
+   write_cache(user_params.alarm_HIGH__2);
+#endif
 
    print_stringv("glucose: \x90\n", 2*aver_2);   // aver_2 is halved!
 
@@ -902,6 +950,7 @@ bool raise_alarm = false;
    // call it before board_status was updated
    //
    transmit_glucose(aver_2);
+   disable_enocean();
 
    if (raise_alarm)   // glucose is too low or too high
       {
@@ -918,7 +967,7 @@ main(int, char *[])
    // read user definable parameters from EEPROM
    {
      uint8_t * up = (uint8_t *)&user_params;
-     for (uint16_t e = 0; e < sizeof(user_params); ++e)
+     for (uint16_t e = USER_PARAMS; e < sizeof(user_params); ++e)
          up[e] = eeprom_read_byte((const uint8_t *)e);
    }
 
@@ -931,6 +980,10 @@ main(int, char *[])
 const uint8_t calib = user_params.oscillator_calibration;
    if (calib != 0xFF)   OSCCAL = calib;        // calibration override
    else                 OSCCAL = CPU_CALIB;
+#endif
+
+#if ENOCEAN
+   for (const char * p = "\n\nENO-RES\n\n"; *p;)   print_byte(*p++);
 #endif
 
    print_stringv("\n\n\nosc=x\x80\n", OSCCAL);

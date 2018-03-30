@@ -46,14 +46,15 @@
 
 enum CPU_Calibration
 {
-   NO_CPU_CALIBRATION = 0xFF,   // no CPU calibration
+// NO_CPU_CALIBRATION = 0xFF,   // no CPU calibration
 
 // CPU_CALIBRATION    = NO_CPU_CALIBRATION   // good luck!
+// CPU_CALIBRATION    = 0x4C                 // PCB old #2
 // CPU_CALIBRATION    = 0x46                 // PCB #1
-// CPU_CALIBRATION    = 0x3F                 // PCB #2: Ralf
-// CPU_CALIBRATION    = 0x40                 // PCB #3
+   CPU_CALIBRATION    = 0x3F                 // PCB #2: Ralf
+   CPU_CALIBRATION    = 0x50                 // PCB #3
 
-   CPU_CALIBRATION    = 0x4C                 // PCB #4: 47-51 5V USB
+// CPU_CALIBRATION    = 0x4C                 // PCB #4: 47-51 5V USB
                                              //         46-50 battery
 };
 

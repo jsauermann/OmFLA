@@ -19,7 +19,9 @@
  functions for accessing an enocean TCM 310 module
  */
 
-// NOTE: our prototype's enocean ID is FFD64680
+// NOTE: our prototypes' enocean IDs are:
+//       FFD64680 (old PCB) and
+//       FFD50500 (new PCB)
 
 static  int8_t rx_idx = 0;
 static uint8_t id2 = 0;
@@ -83,7 +85,7 @@ enable_enocean()
 
    if (id_valid)   return;
 
-   // first enable_enocean() call, determine the TCM 310 enocean ID...
+   // first call of enable_enocean(), determine the TCM 310 enocean ID...
 
    // enable transmitter, receiver, and receiver interrupts
    //
@@ -133,6 +135,72 @@ crc = 0;
    print_byte(olen);
    print_byte(RADIO_ERP1);
    print_byte(crc);
+}
+//-----------------------------------------------------------------------------
+inline void
+transmit_block(uint8_t block)
+{
+   // message has 12 bytes:
+   //
+   // COMMAND, hist_idx, trend_idx, block, 8 data bytes
+   //
+   enum
+      {
+        MESSAGE_LEN = 12,
+
+        // header constants...
+        //
+        DLEN        = 1             // Rorg
+                    + MESSAGE_LEN   // message
+                    + 4             // sender ID
+                    + 1,            // status
+
+        OLEN        = 1             // subtel
+                    + 4             // dest ID
+                    + 1             // dBm
+                    + 1,            // ENCRYPTED
+
+
+        // data constants...
+        //
+        RORG_VLD  = 0xD2,
+        Raw_BLOCK = 0x21,
+        ESTATUS   = 0,
+
+        // Jalu_server uses 0..11
+
+        // optional data constants...
+        //
+        SubTelNum   = 0,
+        DestID      = 0xFF,   // 4 times
+        dBm         = 0xFF,
+        ENCRYPTED   = 0,
+      };
+
+   transmit_header(DLEN, OLEN);
+
+crc = 0;
+uint16_t src = SENSOR_Cache + 11*(block - 4);
+   print_byte(RORG_VLD);                                    // VLD data...
+   print_byte(Raw_BLOCK);
+   for (int j = 0; j < 11; ++j)
+       print_byte(eeprom_read_byte((const uint8_t *)(src++)));
+   print_byte(0xFF);   // id1 (always FF)
+   print_byte(id2);
+   print_byte(id3);
+   print_byte(id4);
+   print_byte(ESTATUS);
+
+   print_byte(SubTelNum);
+   print_byte(DestID);
+   print_byte(DestID);
+   print_byte(DestID);
+   print_byte(DestID);
+   print_byte(dBm);
+   print_byte(ENCRYPTED);
+   print_byte(crc);
+
+   sleep_ms(100);   // time to finish transmission
 }
 //-----------------------------------------------------------------------------
 static void
@@ -186,7 +254,7 @@ crc = 0;
    print_byte(batt_result >> 8);   // battery high
    print_byte(batt_result);        // battery low
    print_byte(board_status);       // dito
-   print_byte(0xFF);
+   print_byte(0xFF);   // id1 (always FF_
    print_byte(id2);
    print_byte(id3);
    print_byte(id4);

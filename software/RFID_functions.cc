@@ -19,6 +19,7 @@
  functions for accessing a Texas Instruments TRF7970A via its SPI bus
  */
 
+//-----------------------------------------------------------------------------
 static void
 SPI_transfer(const uint8_t * tx, uint8_t * rx, uint8_t length)
 {
@@ -94,6 +95,7 @@ enum Register
   TX_LENGTH_BYTE_2         = 0x1E,
   FIFO                     = 0x1F,
 };
+
 //-----------------------------------------------------------------------------
 enum Register_value
 {
@@ -118,6 +120,9 @@ enum Register_value
    ISO_MODE = ISO_MODE_high,
    ISO_FLAGS = ISO_FLAGS_high,
 };
+//-----------------------------------------------------------------------------
+const uint8_t fifo[1 + MAX_FIFO] = { READ | CONT | FIFO, 0 };
+uint8_t rx_data[sizeof(fifo)];
 //-----------------------------------------------------------------------------
 static void
 DirectCommand(uint8_t command)
