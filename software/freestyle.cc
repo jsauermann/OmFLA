@@ -110,7 +110,7 @@ uint16_t pass = 0;
 static void
 write_cache(uint8_t value)
 {
-   if (pass > 1)   eeprom_write_byte((uint8_t *)cache++, value);
+   if (pass > 1)   eeprom_update_byte((uint8_t *)cache++, value);
 }
 #else
 # define write_cache(value)

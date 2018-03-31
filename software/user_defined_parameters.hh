@@ -62,7 +62,7 @@ enum CPU_Calibration
 enum Alarm_thresholds
 {
    ALARM_HIGH   = 250,   // mg/dl, beep if glucose > ALARM_HIGH
-   ALARM_LOW    =  66,   // mg/dl, beep if glucose < ALARM_LOW
+   ALARM_LOW    =  80,   // mg/dl, beep if glucose < ALARM_LOW
    MARGIN_HIGH  =  40,   // mg/dl, minimum between initial and limit_HIGH
    MARGIN_LOW   =  20,   // mg/dl, minimum between initial and limit_LOW
 };

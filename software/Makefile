@@ -5,7 +5,7 @@
 # PROGRAMMER = avrisp2 -B 4   // too low for built-in clock
 # PROGRAMMER = avrisp2 -B 8
   PROGRAMMER = avrisp2 -B 10
-# PROGRAMMER = avrisp2 -B 100
+#P ROGRAMMER = avrisp2 -B 100
 
 # PROGRAMMER = xil
 
@@ -17,18 +17,18 @@ PART = attiny4313
 ################################################33
 # FUSE selection...
 #
-FUSEL_XTAL    = 0x6D
-FUSEL_XTAL_DESCR = external crystal ÷1
+FUSEL = 0xD2
+# FUSEL = 0x62
 
-FUSEL_RC4 = 0x62
-FUSEL_RC4_DESCR = internal 4 MHz oscillator ÷1
+FUSEL_DESCR = internal 4 MHz oscillator ÷1
 
 TOOLS = /usr/lib/avr/bin
 CXX = $(TOOLS)/avr-g++ -mmcu=$(PART)
 CXX_FLAGS = -Os -I /usr/lib/avr/include -Wall -Werror -std=c++11
 OBJDUMP = $(TOOLS)/avr-objdump
 OBJCOPY = $(TOOLS)/avr-objcopy
-DUDE = $(TOOLS)/avrdude -p $(PART) -c $(PROGRAMMER)
+# DUDE = $(TOOLS)/avrdude -p $(PART) -c $(PROGRAMMER)
+DUDE = avrdude -p $(PART) -c $(PROGRAMMER)
 
 ################################################33
 # user preferences (as specified in file user_defined_parameters.hh)
@@ -56,6 +56,7 @@ all:	beeper_test.hex   \
 help:
 	@echo "make targets:"
 	@echo "    all:          compile source files"
+	@echo "    info:         shows some avrdude commands"
 	@echo "    clean:        remove generated files"
 	@echo "    flash_nod:    all + flash the no-debug version of freestyle.cc"
 	@echo "    flash_deb:    all + flash the debug version of freestyle.cc"
@@ -64,8 +65,7 @@ help:
 	@echo "    flash_cal:    all + flash the CPU calibration program"
 	@echo "    signature:    read and show device signature"
 	@echo "    fusel:        read and show low fuse"
-	@echo "    wfusel_XTAL:  write low fuse ($(FUSEL_XTAL)= $(FUSEL_XTAL_DESCR))"
-	@echo "    wfusel_RC4:   write low fuse ($(FUSEL_RC4)= $(FUSEL_RC4_DESCR))"
+	@echo "    wfusel:       write low fuse ($(FUSEL)= $(FUSEL_DESCR))"
 	@echo "    eeprom:       read and show the device EEPROM"
 	@echo "    weeprom:      write eeprom.data to device EEPROM"
 	@echo "    calibration:  read and show calibration values"
@@ -138,6 +138,14 @@ fusel:
 eeprom:
 	$(DUDE) -U eeprom:r:-:h
 
+sflash:
+	$(DUDE) -U flash:r:saved_flash.hex:i
+	chmod 444 saved_flash.hex
+
+seeprom:
+	$(DUDE) -U eeprom:r:saved_eeprom.hex:i
+	chmod 444 saved_eeprom.hex
+
 weeprom: eeprom.data
 	$(DUDE) -U eeprom:w:eeprom.data:r
 
@@ -161,11 +169,8 @@ calibration:
 #                   0x62 internal 4 MHz oscillator                 ÷8
 #                   0x68 external crystal (hangs if not present)   ÷8
 #                   0x28 external crystal, output on pin 6         ÷8
-wfusel_XTAL:
-	$(DUDE) -F -U lfuse:w:$(FUSEL_XTAL):m
-
-wfusel_RC4:
-	$(DUDE) -F -U lfuse:w:$(FUSEL_RC4):m
+wfusel:
+	$(DUDE) -F -U lfuse:w:$(FUSEL):m
 
 # default high fuse: 0xDF
 # wfuseh:
@@ -178,3 +183,8 @@ reset:
 user_defined_parameters: user_defined_parameters.cc user_defined_parameters.hh
 	g++ -o $@ $<
 
+info:
+	@echo
+	@echo "    $(DUDE) -U flash:w:saved_flash.hex:i"
+	@echo "    $(DUDE) -U eeprom:w:saved_eeprom.hex:r"
+	@echo
