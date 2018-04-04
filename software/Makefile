@@ -2,33 +2,38 @@
 ################################################33
 # PROGRAMMER selection...
 #
-# PROGRAMMER = avrisp2 -B 4   // too low for built-in clock
-# PROGRAMMER = avrisp2 -B 8
-  PROGRAMMER = avrisp2 -B 10
-#P ROGRAMMER = avrisp2 -B 100
-
-# PROGRAMMER = xil
+# PROGRAMMER = -c avrisp2 -B 4   // too low for built-in clock
+# PROGRAMMER = -c avrisp2 -B 8
+  PROGRAMMER = -c avrisp2 -B 20
+# PROGRAMMER = -c xil
 
 ################################################33
-# PART selection...
+# PART selection (alwats 4313
 #
 PART = attiny4313
 
 ################################################33
 # FUSE selection...
 #
-FUSEL = 0xD2
-# FUSEL = 0x62
+  FUSEL = 0xED
+# FUSEL = 0xE2
 
-FUSEL_DESCR = internal 4 MHz oscillator ÷1
+ifeq ($(FUSEL),0xED)
+  FUSEL_DESCR = "external Xtal, CLKPR ÷ 1"
+else ifeq ($(FUSEL),"0xE2")
+  FUSEL_DESCR = "internal RC oscillator, CLKPR ÷ 1"
+else
+  FUSEL_DESCR = "*** unsupported fuse value ***"
+endif
 
 TOOLS = /usr/lib/avr/bin
 CXX = $(TOOLS)/avr-g++ -mmcu=$(PART)
 CXX_FLAGS = -Os -I /usr/lib/avr/include -Wall -Werror -std=c++11
+CXX_FLAGS += -D FUSEL=$(FUSEL)
 OBJDUMP = $(TOOLS)/avr-objdump
 OBJCOPY = $(TOOLS)/avr-objcopy
-# DUDE = $(TOOLS)/avrdude -p $(PART) -c $(PROGRAMMER)
-DUDE = avrdude -p $(PART) -c $(PROGRAMMER)
+# DUDE = $(TOOLS)/avrdude -p $(PART) $(PROGRAMMER)
+DUDE = avrdude -p $(PART) $(PROGRAMMER)
 
 ################################################33
 # user preferences (as specified in file user_defined_parameters.hh)
@@ -55,23 +60,23 @@ all:	beeper_test.hex   \
 
 help:
 	@echo "make targets:"
-	@echo "    all:          compile source files"
-	@echo "    info:         shows some avrdude commands"
+	@echo "    all:          compile the source files"
+	@echo "    info:         show some useful avrdude commands"
 	@echo "    clean:        remove generated files"
 	@echo "    flash_nod:    all + flash the no-debug version of freestyle.cc"
 	@echo "    flash_deb:    all + flash the debug version of freestyle.cc"
 	@echo "    flash_eno:    all + flash the encocean version of freestyle.cc"
 	@echo "    flash_beep:   all + flash the beeper test program"
 	@echo "    flash_cal:    all + flash the CPU calibration program"
-	@echo "    signature:    read and show device signature"
-	@echo "    fusel:        read and show low fuse"
-	@echo "    wfusel:       write low fuse ($(FUSEL)= $(FUSEL_DESCR))"
-	@echo "    eeprom:       read and show the device EEPROM"
-	@echo "    weeprom:      write eeprom.data to device EEPROM"
+	@echo "    signature:    read and show the signature of the device"
+	@echo "    fusel:        read and show the low fuse of the device"
+	@echo "    wfusel:       write low fuse ($(FUSEL) = $(FUSEL_DESCR))"
+	@echo "    eeprom:       read and show the EEPROM of the device"
+	@echo "    weeprom:      write eeprom.data into the EEPROM of the device"
 	@echo "    calibration:  read and show calibration values"
 	@echo "    reset:        reset device (pulse)"
 	@echo
-	@echo "    !!! DEVICE MUST BE POWERED ON !!!"
+	@echo "    !!! FOR DEVICE OPERATIONS THE DEVICE MUST BE POWERED ON !!!"
 	@echo
 
 beeper_test.elf: beeper_test.cc Makefile
@@ -170,7 +175,7 @@ calibration:
 #                   0x68 external crystal (hangs if not present)   ÷8
 #                   0x28 external crystal, output on pin 6         ÷8
 wfusel:
-	$(DUDE) -F -U lfuse:w:$(FUSEL):m
+	$(DUDE) -F -U lfuse:w:$(FUSEL).hex
 
 # default high fuse: 0xDF
 # wfuseh:

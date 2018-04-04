@@ -48,10 +48,10 @@
    built-in 4 MHz RC oscillator shall be calibrated.
  */
 
-#define VARY_COUNT 0
+#define VARY_COUNT 1
 
-# define F_CPU 4000000
-// # define F_CPU 3686400
+// # define F_CPU 4000000
+# define F_CPU 3686400
 
 #define SOFT_BAUD 57600
 // #define SOFT_BAUD 9600

@@ -19,18 +19,31 @@
  top-level functions for the OmFLA device
  */
 
+#if   FUSEL == 0xED
+# define MAY_CALIBRATE 0   // CPU calibration has no effect (external Xtal used)
+#elif FUSEL == 0xE2
+# define MAY_CALIBRATE 1   // CPU calibration possible (RC Oscillator used)
+#else
+# error "Bad/Unsupported Low Fuse Setting (expecting 0x6D or 0x62)"
+#endif
+
+#define F_CPU      3686400
+#define  CPU_CALIB 0x3B
+#define BAUDRATE   57600
+
 #include "user_defined_parameters.hh"
 
 // NOTE: 4313 Fuse settings:
 //
 // Extended Fuse: 0xFF (default)
 // High Fuse:     0xDF (default)
-// Low Fuse:      0x62 (default)
+// Low Fuse:      set in Makefile
 //
 
-// the macro MODE defines if:
+// the macro MODE defines one of 3 hardware configurations. In particular
+// it defines if:
 //
-// * an ENOCEAN TCM 310 is installed on the PCB,
+// * an ENOCEAN TCM 310 radio module is installed on the OmFLA PCB,
 // * the UART is used at all (TCM 310 or debug output), and
 // * formatted print functions are needed.
 //
@@ -38,17 +51,19 @@
 // of an Atmel 4313 chip.
 //
 #if       MODE == 0    // debug output on TxD
-#  define ENOCEAN      0
-#  define HARD_UART    0
-#  define SOFT_UART    1
-#  define FANCY_PRINT  1
-#  define EEPROM_CACHE 0
+# define ENOCEAN       0
+# define HARD_UART     0
+# define SOFT_UART     1
+# define FANCY_PRINT   1
+# define EEPROM_CACHE  0
+
 #elif     MODE == 1    // TxD connected to TCM 310
 # define  ENOCEAN      1
 # define  HARD_UART    1
 # define SOFT_UART     0
 # define  FANCY_PRINT  0
-#  define EEPROM_CACHE 1
+# define EEPROM_CACHE  1
+
 #elif     MODE == 2    // TxD not used
 # define  ENOCEAN      0
 # define  HARD_UART    0
@@ -57,35 +72,6 @@
 # define EEPROM_CACHE  1
 #else                  // illegal
 # error "MODE must be 0, 1, or 2 !"
-#endif
-
-#if HARD_UART
-# define F_CPU 3686400      // with Xtal or calibration to 3.3634 MHz
-# define  CPU_CALIB 0x3B
-#else
-# define F_CPU 4000000      // with internal 4.0 MHz RC oscillator
-# define  CPU_CALIB 0x26
-#endif
-
-#if SOFT_UART
-# define SOFT_BAUD 57600
-# define SOFT_PORT_1 PORTB
-# define SOFT_PBIT_1 B_PROG_MISO
-# define SOFT_PORT_2 PORTD
-# define SOFT_PBIT_2 D_TCM_TxD
-
-enum CPU_cycles
-   {
-     DELAY_LOOP_LEN = 3,   // one iteration of _delay_loop_1()
-     DELAY_PREAMBLE = 13,   // set/clear bit etc
-                                                         // 9600   57600
-     CYCLES_PER_BIT = F_CPU / SOFT_BAUD,                 //  384      64
-     DELAY_PER_BIT  = CYCLES_PER_BIT - DELAY_PREAMBLE,   //  371      51
-     SOFT_COUNT     = DELAY_PER_BIT/DELAY_LOOP_LEN,      //  123      17
-   };
-
-static uint16_t soft_count = SOFT_COUNT;
-
 #endif
 
 enum EERPROM_addresses
@@ -199,7 +185,7 @@ enum IO_pins
                | B_TCM_POWER
                | B_LED_GREEN
                | B_PROG_MOSI
-               | B_PROG_MISO  // UART txD and PROG_MISO both driven low
+               | B_PROG_MISO  // UART TxD and PROG_MISO both driven low
                | B_PROG_SCL,
 #endif
    pullup_B  = 0,
@@ -228,55 +214,7 @@ enum BOARD_STATUS
    BSTAT_BELOW_INITIAL = 4,
 };
 
-#if HARD_UART || SOFT_UART
-static void
-_print_char(uint8_t ch)
-{
-   // update CRC if needed
-   //
-# if ENOCEAN
-   enum { polynom = 0x07 };   // (x^8) + x^2 + x^1 + x^0
-   crc ^= ch;
-   for (uint8_t i = 0; i < 8; i++)
-       {
-         const bool crc_high = crc & 0x80;
-         crc <<= 1;
-         if (crc_high)   crc ^= polynom;
-       }
-# endif
-
-   // transmit the character
-   //
-# if HARD_UART
-   while (!(UCSRA & 1 << UDRE))   ;   // wait for DR empty
-   UDR = ch;
-# else   // SOFT_UART
-   //
-   //             ╔╦═════════════════  stop bit(s)
-   //             ║║     ╔╦══════════  8 data bits
-   //             ║║     ║║     ╔════  start bit
-int16_t bits = (0xFF00 | ch) << 1;
-
-   for (uint8_t j = 0; j < 12; ++j)   // 1 start _ 8 data + 3 stop
-       {
-         if (bits & 1)
-            {
-              SOFT_PORT_1 |=  SOFT_PBIT_1;
-              SOFT_PORT_2 |=  SOFT_PBIT_2;
-            }
-         else
-            {
-              SOFT_PORT_1 &= ~SOFT_PBIT_1;
-              SOFT_PORT_2 &= ~SOFT_PBIT_2;
-              SOFT_PORT_2 &= ~SOFT_PBIT_2;   // compensate sbrs skew
-            }
-         bits >>= 1;
-         _delay_loop_1(soft_count);
-       }
-
-# endif
-}
-#endif
+#include "UART.cc"
 
 static uint8_t  board_status = BSTAT_RESET;
 static uint8_t  trend_idx = 0;
@@ -355,7 +293,6 @@ sleep_ms(uint32_t milli_secs)
 }
 //-----------------------------------------------------------------------------
 #define MAX_FIFO 10
-
 #include "RFID_functions.cc"
 
 #if ENOCEAN
@@ -375,35 +312,11 @@ init_hardware()
    PORTB = pullup_B | B_PROG_MOSI | B_TCM_POWER | B_PROG_SCL;
    PORTD = pullup_D | D_BEEPER;
 
-   // CPU clock prescaler: x1
-   //
-   CLKPR = 0x80;   // enable write to CLKPR
-   CLKPR = 0x00;   // x1 clock
-
    // timer 1 off
    TCCR1A = 0;
    TCCR1B = 0;
 
-#if HARD_UART
-   // UART
-   //
-   enum
-      {
-        BAUDRATE = 57600,
-        F_IO_16 = F_IO/16,
-        BAUD_DIVISOR = (F_IO_16 / BAUDRATE) - 1
-      };
-
-   UBRRH = BAUD_DIVISOR >> 8;
-   UBRRL = BAUD_DIVISOR & 0xFF;
-
-   disable_enocean();   // empty unless ENOCEAN is #defined as well
-   UCSRB = 0 << RXEN | 1 << TXEN;
-   UCSRC = 1 << USBS | 3 << UCSZ0;   // async, 2 stop, 8 data
-#elif SOFT_UART
-   SOFT_PORT_1 |= SOFT_PBIT_1;   // set TxD high
-   SOFT_PORT_2 |= SOFT_PBIT_2;   // set TxD high
-#endif
+   init_uart();
 
    // set up pins again AFTER all alternate functions have been enabled...
 
@@ -838,24 +751,22 @@ doit()
    setup_chip();
    gluco_idx = 0;
 
-bool errors;
    cache = SENSOR_Cache;
    for (uint8_t b = 3; b < 15; ++b)
        {
-         if ((errors = read_Block(b)
-                    || decode_Block(b)))   break;
+         if (read_Block(b) || decode_Block(b))
+            {
+               RF_Off();
+               board_status = BSTAT_RFID_ERROR;
+               transmit_glucose(0);
+               disable_enocean();
+               beep(3, 100, 100);
+               return 8000*int32_t(user_params.read_error_retry__8);
+            }
+
          read_ISR();   // clear interrupt register
        }
    RF_Off();
-
-   if (errors)
-      {
-         board_status = BSTAT_RFID_ERROR;
-         transmit_glucose(0);
-         disable_enocean();
-         beep(3, 100, 100);
-         return 8000*int32_t(user_params.read_error_retry__8);
-      }
 
 #if EEPROM_CACHE and ENOCEAN
    enable_enocean();
@@ -978,7 +889,7 @@ main(int, char *[])
 
    init_RFID_reader();
 
-#if HARD_UART || SOFT_UART
+#if MAY_CALIBRATE
 const uint8_t calib = user_params.oscillator_calibration;
    if (calib != 0xFF)   OSCCAL = calib;        // calibration override
    else                 OSCCAL = CPU_CALIB;
@@ -988,7 +899,12 @@ const uint8_t calib = user_params.oscillator_calibration;
    for (const char * p = "\n\nENO-RES\n\n"; *p;)   print_byte(*p++);
 #endif
 
+#if MAY_CALIBRATE
    print_stringv("\n\n\nosc=x\x80\n", OSCCAL);
+#else
+   print_string("\n\n\nXTAL\n");
+#endif
+   print_stringv("CLKPR=\x90\n",       CLKPR);
    print_stringv("slope=\x90\n",       user_params.sensor_slope);
    print_stringv("offset=\x90\n",      user_params.sensor_offset);
    print_stringv("alarm_HIGH=\x90\n",  user_params.alarm_HIGH__2  << 1);

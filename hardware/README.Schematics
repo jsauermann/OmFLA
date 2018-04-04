@@ -16,23 +16,15 @@ R4, R5, and T1) are only needed if the device shall send the glucose values
 read from the Freestyle Libre sensor (along with the current battery charging
 level) to a remote receiver via an Enocean based radio interface.
 
-The 12 MHz Quartz (Q1) and its capacitors C2 and C3 shown in the schematic are
-not needed. The ATtiny 4313 uses its internal oscillator running at 4 MHz.
-The Enocean module (and also the serial debug output) needs a 57,600 baud
-clock. For 57,600 baud, internal 4 MHz oscillator would need a baud rate divisor
-of 4.34, which is impossible because the divisor is an integer. For that
-reason, if the UART is needed (for Enocean or for serial debug output) then
-the internal oscillator has to be calibrated down to 4x16x57,600 = 3,686,400 Hz.
-On the author's device this was achieved with OSCCAL = 0x3B. Alternatively
-one could use a 3,686,400 MHz crystal, although the power consumption may be
-higher than for the internal oscillator.
+The Enocean module and, for simplicity, also the serial debug output run at
+57,600 baud. This baudrate is derived from a 3.686400 MHz CPU clock (note that
+3.686.400 = x16x57,600). In thie initial version of this document it was
+proposed to use the uinternal RC oscillator of the 4313. In the meantime,
+however, some current measurements were performed which showed that using
+the internal RC oscillator draws more current than an external crystal.
+Therefore the Makefile and the source code was changed, now assuming a CPU
+clock of 3.686400 MHz instad of 4.000000 MHz.
 
-For an ATtiny 4313 to use the 4 MHz oscillator, its low fuse must programmed to
-0x62 (the other fuses left as shipped). If you should mistakenly program the
-low fuse to use an external crystal, then you cannot re-program the device or
-the fuses unless an external crystal is (temporarily) connected.
-
-Installing J4 may lead to too little space between the RFID reader PCB
-and the micro-controller PCB. Solder the battery wires directly onto the
-PCB.
+Installing J4 may lead to too little space between the RFID reader PCB and
+the micro-controller PCB. Solder the battery wires directly onto the PCB.
 
