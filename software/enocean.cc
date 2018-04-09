@@ -119,8 +119,34 @@ static uint8_t RD_BASE_command[] = { 0x55, 0x00, 0x01, 0x00,
 #endif
 }
 //-----------------------------------------------------------------------------
+enum
+{
+   // header constants...
+   //
+   OLEN = 1             // subtel
+        + 4             // dest ID
+        + 1             // dBm
+        + 1,            // ENCRYPTED
+
+   // data constants...
+   //
+   RORG_VLD    = 0xD2,
+                         // Jalu_server uses commands 0..11
+   Gluco_VALUE   = 0x20,   // command: glucose value
+   Change_BITMAP = 0x21,   // command: changed bytes
+   Change_VALUES = 0x22,   // command: changed bytes
+   ESTATUS     = 0,
+
+   // optional data constants...
+   //
+   SubTelNum   = 0,
+   DestID      = 0xFF,   // 4 times
+   dBm         = 0xFF,
+   ENCRYPTED   = 0,
+};
+
 static void
-transmit_header(uint8_t dlen, uint8_t olen)
+transmit_header(uint8_t dlen)
 {
    enum {
           SYNC        = 0x55,
@@ -132,65 +158,22 @@ transmit_header(uint8_t dlen, uint8_t olen)
 crc = 0;
    print_byte(0);      // upper byte of dlen
    print_byte(dlen);   // lower byte of dlen
-   print_byte(olen);
+   print_byte(OLEN);
    print_byte(RADIO_ERP1);
    print_byte(crc);
 }
 //-----------------------------------------------------------------------------
-inline void
-transmit_block(uint8_t block)
+static void
+transmit_common()
 {
-   // message has 12 bytes:
-   //
-   // COMMAND, hist_idx, trend_idx, block, 8 data bytes
-   //
-   enum
-      {
-        MESSAGE_LEN = 12,
-
-        // header constants...
-        //
-        DLEN        = 1             // Rorg
-                    + MESSAGE_LEN   // message
-                    + 4             // sender ID
-                    + 1,            // status
-
-        OLEN        = 1             // subtel
-                    + 4             // dest ID
-                    + 1             // dBm
-                    + 1,            // ENCRYPTED
-
-
-        // data constants...
-        //
-        RORG_VLD  = 0xD2,
-        Raw_BLOCK = 0x21,
-        ESTATUS   = 0,
-
-        // Jalu_server uses 0..11
-
-        // optional data constants...
-        //
-        SubTelNum   = 0,
-        DestID      = 0xFF,   // 4 times
-        dBm         = 0xFF,
-        ENCRYPTED   = 0,
-      };
-
-   transmit_header(DLEN, OLEN);
-
-crc = 0;
-uint16_t src = SENSOR_Cache + 11*(block - 4);
-   print_byte(RORG_VLD);                                    // VLD data...
-   print_byte(Raw_BLOCK);
-   for (int j = 0; j < 11; ++j)
-       print_byte(eeprom_read_byte((const uint8_t *)(src++)));
-   print_byte(0xFF);   // id1 (always FF)
+   // common part of data
+   print_byte(0xFF);         // id1 (always FF)
    print_byte(id2);
    print_byte(id3);
    print_byte(id4);
    print_byte(ESTATUS);
 
+   // optional data
    print_byte(SubTelNum);
    print_byte(DestID);
    print_byte(DestID);
@@ -199,6 +182,59 @@ uint16_t src = SENSOR_Cache + 11*(block - 4);
    print_byte(dBm);
    print_byte(ENCRYPTED);
    print_byte(crc);
+}
+//-----------------------------------------------------------------------------
+inline void
+transmit_change_bitmap()
+{
+   // message has 1 + (CB_LEN + changed_idx) bytes:
+   //
+   // COMMAND sizeof(changed_bitmap) changed_values[0..changed_idx-1]
+   //
+   enum { CB_LEN = sizeof(changed_bitmap) };
+
+const uint8_t MESSAGE_LEN = 1              // COMMAND
+                          + CB_LEN;        // changed_bitmap
+                          ;
+
+const uint8_t DLEN = 1             // Rorg
+                   + MESSAGE_LEN   // COMMAND, changed_bitmap, changed_values
+                   + 4             // sender ID
+                   + 1;            // status
+   transmit_header(DLEN);
+
+crc = 0;
+   print_byte(RORG_VLD);        // VLD data...
+      print_byte(Change_BITMAP);   // command
+      for (int8_t b = 0; b < CB_LEN; ++b)       print_byte(changed_bitmap[b]);
+   transmit_common();
+
+   sleep_ms(100);   // time to finish transmission
+}
+//-----------------------------------------------------------------------------
+inline void
+transmit_changed_values()
+{
+   // message has 1 + (CB_LEN + changed_idx) bytes:
+   //
+   // COMMAND sizeof(changed_bitmap) changed_values[0..changed_idx-1]
+   //
+   enum { CB_LEN = sizeof(changed_bitmap) };
+
+const uint8_t MESSAGE_LEN = 1              // COMMAND
+                          + changed_idx;   // changed_values[]
+
+const uint8_t DLEN = 1             // Rorg
+                   + MESSAGE_LEN   // COMMAND, changed_bitmap, changed_values
+                   + 4             // sender ID
+                   + 1;            // status
+   transmit_header(DLEN);
+
+crc = 0;
+   print_byte(RORG_VLD);        // VLD data...
+      print_byte(Change_VALUES);   // command
+      for (int8_t v = 0; v < changed_idx; ++v)  print_byte(changed_values[v]);
+   transmit_common();
 
    sleep_ms(100);   // time to finish transmission
 }
@@ -206,15 +242,15 @@ uint16_t src = SENSOR_Cache + 11*(block - 4);
 static void
 transmit_glucose(uint8_t gluco_2)
 {
-   enable_enocean();
-
    // message has 5 bytes:
    //
-   // COMMAND,  gluco_2,  battery-high, battery-low, board-status
    //
    enum
       {
-        MESSAGE_LEN = 5,
+        MESSAGE_LEN = 1   // COMMAND
+                    + 1   // gluco_2,
+                    + 2   //  battery-high, battery-low,
+                    + 1,  //  board status
 
         // header constants...
         //
@@ -222,54 +258,20 @@ transmit_glucose(uint8_t gluco_2)
                     + MESSAGE_LEN   // message
                     + 4             // sender ID
                     + 1,            // status
-
-        OLEN        = 1             // subtel
-                    + 4             // dest ID
-                    + 1             // dBm
-                    + 1,            // ENCRYPTED
-
-
-        // data constants...
-        //
-        RORG_VLD    = 0xD2,
-        Gluco_VALUE = 0x20,
-        ESTATUS     = 0,
-
-        // Jalu_server uses 0..11
-
-        // optional data constants...
-        //
-        SubTelNum   = 0,
-        DestID      = 0xFF,   // 4 times
-        dBm         = 0xFF,
-        ENCRYPTED   = 0,
       };
 
-   transmit_header(DLEN, OLEN);
+   transmit_header(DLEN);
 
 crc = 0;
    print_byte(RORG_VLD);           // data...
-   print_byte(Gluco_VALUE);        // command
-   print_byte(gluco_2);            // glucose/2
-   print_byte(batt_result >> 8);   // battery high
-   print_byte(batt_result);        // battery low
-   print_byte(board_status);       // dito
-   print_byte(0xFF);   // id1 (always FF_
-   print_byte(id2);
-   print_byte(id3);
-   print_byte(id4);
-   print_byte(ESTATUS);
+       print_byte(Gluco_VALUE);        // command
+       print_byte(gluco_2);            // glucose/2
+       print_byte(batt_result >> 8);   // battery high
+       print_byte(batt_result);        // battery low
+       print_byte(board_status);       // dito
+   transmit_common();
 
-   print_byte(SubTelNum);
-   print_byte(DestID);
-   print_byte(DestID);
-   print_byte(DestID);
-   print_byte(DestID);
-   print_byte(dBm);
-   print_byte(ENCRYPTED);
-   print_byte(crc);
-
-   disable_enocean();
+   sleep_ms(100);   // time to finish transmission
 }
 //-----------------------------------------------------------------------------
 static const uint8_t RD_BASE_response[] =

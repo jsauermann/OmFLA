@@ -17,8 +17,8 @@ read from the Freestyle Libre sensor (along with the current battery charging
 level) to a remote receiver via an Enocean based radio interface.
 
 The Enocean module and, for simplicity, also the serial debug output run at
-57,600 baud. This baudrate is derived from a 3.686400 MHz CPU clock (note that
-3.686.400 = x16x57,600). In thie initial version of this document it was
+57,600 baud. This baudrate is derived from a 3.686400 MHz CPU clock (note
+that 3.686.400 = 4x16x57,600). In thie initial version of this document it was
 proposed to use the uinternal RC oscillator of the 4313. In the meantime,
 however, some current measurements were performed which showed that using
 the internal RC oscillator draws more current than an external crystal.
