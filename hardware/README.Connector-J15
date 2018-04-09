@@ -61,19 +61,29 @@ has been removed because, the built-in charging circuit of Lithium battery is
 supposedly better adapted to the particular battery used than a generic 
 charging circuit like the MAX 155.;
 
-For charging the battery, two pins of J15 are used:
+For charging the battery, two or three pins of J15 are used:
 
-╔═════╤════════╤═══════════════════════════╗
-║ Pin │ Signal │ Note                      ║
-╠═════╪════════╪═══════════════════════════╣
-║  2  │ Vcc    │ from charger or USB power ║
-╟─────┼────────┼───────────────────────────╢
-║  6  │ GND    │ from charger or USB power ║
-╚═════╧════════╧═══════════════════════════╝
+╔═════╤══════════╤═════════════════════════════════════════╗
+║ Pin │ Signal   │ Note                                    ║
+╠═════╪══════════╪═════════════════════════════════════════╣
+║  2  │ Vcc      │ from charger or USB power               ║
+╟─────┼──────────┼─────────────────────────────────────────╢
+║  4  │ nBEEPER- │ connect to GND (jumper 4-6) at power ON ║
+║     │  DISABLE │ to disable the beeper beeper          ║
+╟─────┼──────────┼─────────────────────────────────────────╢
+║  6  │ GND      │ from charger or USB power               ║
+╚═════╧══════════╧═════════════════════════════════════════╝
 
 When charging the battery, make sure that the device is switched ON. If the
 device is switched OFF, then the + electrode of the battery is disconnected
 from Vcc of the device and therefore the battery cannot be charged via J15.
+
+Since the OmFLA device is ON while charging the battery it will beep from
+time to time (RFID read error if no sensor is near, or excessive glucose level
+if an expired sensor is placed onto the OmFLA device). This may be good (as a
+reminder that the device is being charged) or annoying. If you connect pins
+4 and 6 of J15 when the device is switched on (or use a charging cable with
+both pins 4 and 6 connected to GND) then the device will remain silent.
 
 The battery can remain inside the device during charging.
 
