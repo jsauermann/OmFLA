@@ -49,21 +49,19 @@ OFFSET = $(shell grep -v '^//' user_defined_parameters.hh | grep SENSOR_OFFSET |
 #
 # freestyle_deb: debugging (UART) enabled,   no enocean TCM 310 not installed
 # freestyle_eno: debugging (UART) disabled,  enocean TCM 310 installed
-# freestyle_nod: debugging (UART) disabled,  enocean TCM 310 not installed
 # 
 all:	beeper_test.hex   \
 	calibrate.hex     \
-	freestyle_nod.hex \
 	freestyle_eno.hex \
 	freestyle_deb.hex \
-	eeprom.data
+	eeprom.data       \
+	OmFLA_printer
 
 help:
 	@echo "make targets:"
 	@echo "    all:          compile the source files"
 	@echo "    info:         show some useful avrdude commands"
 	@echo "    clean:        remove generated files"
-	@echo "    flash_nod:    all + flash the no-debug version of freestyle.cc"
 	@echo "    flash_deb:    all + flash the debug version of freestyle.cc"
 	@echo "    flash_eno:    all + flash the encocean version of freestyle.cc"
 	@echo "    flash_beep:   all + flash the beeper test program"
@@ -79,6 +77,18 @@ help:
 	@echo "    !!! FOR DEVICE OPERATIONS THE DEVICE MUST BE POWERED ON !!!"
 	@echo
 
+freestyle.cc: printA.m4 freestyle.m4in
+	[ -f $@ ] && chmod 644 $@ 
+	if [ `which m4` ]; then m4 printA.m4 freestyle.m4in > $@; \
+	elif [ -f $@ ]; then touch $@; fi
+	chmod 444 $@	# prevent accidental editing
+
+string_table.incl: printB.m4 freestyle.m4in
+	[ -f $@ ] && chmod 644 $@ 
+	if [ `which m4` ]; then m4 printB.m4 freestyle.m4in > $@; \
+	elif [ -f $@ ]; then touch $@; fi
+	chmod 444 $@	# prevent accidental editing
+
 beeper_test.elf: beeper_test.cc Makefile
 	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) $< -o $@
 
@@ -87,14 +97,11 @@ calibrate.elf: calibrate.cc Makefile
 
 COMMON = freestyle.cc RFID_functions.cc user_defined_parameters.hh
 
-freestyle_deb.elf: $(COMMON) print_functions.cc Makefile
+freestyle_deb.elf: $(COMMON) Makefile
 	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) -D MODE=0 $< -o $@
 
 freestyle_eno.elf: $(COMMON) enocean.cc Makefile
 	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) -D MODE=1 $< -o $@
-
-freestyle_nod.elf: $(COMMON) Makefile
-	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) -D MODE=2 $< -o $@
 
 %.lss: %.elf
 	$(OBJDUMP) -h -S $< > $@
@@ -107,7 +114,7 @@ freestyle_nod.elf: $(COMMON) Makefile
 	$(OBJCOPY) -R .eeprom -O ihex $(patsubst %.dis, %.elf, $<) $@
 
 clean:
-	rm -f *.map *.lss *.hex *.elf *.dis
+	rm -f *.map *.lss *.hex *.elf *.dis string_table.incl
 
 # device programming (flashing) targets...
 #
@@ -117,11 +124,6 @@ flash_deb:	freestyle_deb.hex eeprom.data
 	true
 
 flash_eno:	freestyle_eno.hex eeprom.data
-	$(DUDE) -U flash:w:$<:i
-	$(DUDE) -U eeprom:w:eeprom.data:r
-	true
-
-flash_nod:	freestyle_nod.hex eeprom.data
 	$(DUDE) -U flash:w:$<:i
 	$(DUDE) -U eeprom:w:eeprom.data:r
 	true
@@ -186,6 +188,9 @@ reset:
 	$(DUDE) -Enoreset,vcc
 
 user_defined_parameters: user_defined_parameters.cc user_defined_parameters.hh
+	g++ -o $@ $<
+
+OmFLA_printer: OmFLA_printer.cc string_table.incl
 	g++ -o $@ $<
 
 info:

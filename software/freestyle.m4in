@@ -1,6 +1,3 @@
-
-
-
 /*
     Copyright (C) 2018  Dr. Jürgen Sauermann
 
@@ -403,7 +400,7 @@ beep(uint8_t repeat, uint16_t ms_on, uint8_t ms_off)
 {
    if ((PINB & B_JUMPER) == 0)   return;
 
-//  print1(1, ms_on);
+// m4_print1("beep %d\n", ms_on);
    for (int j = 0; j < repeat; ++j)
       {
         clr_pin(D, BEEPER);
@@ -426,8 +423,8 @@ const uint32_t raw_sensor = h << 8 | l;           // total 12 bits
 const uint16_t glucose = user_params.sensor_offset
                        + ((raw_sensor * user_params.sensor_slope) / 1000);
 
-    print2(2, gluco_idx, raw_sensor);
-    print1(3, glucose);
+   m4_print2("raw[%d] = %d", gluco_idx, raw_sensor);
+   m4_print1(" -> %d mg%%\n",  glucose);
 
    gluco2_vec[gluco_idx++] = glucose >> 1;
 }
@@ -458,7 +455,8 @@ decode_Block(uint8_t block)
 const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
    if (FIFO_len > MAX_FIFO)
       {
-         print2(4, FIFO_len, __LINE__);
+        m4_print2("FIFO_len %d is > MAX_FIFO at line %d\n",
+                   FIFO_len, __LINE__);
         goto error_out;
       }
 
@@ -469,13 +467,13 @@ const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
    //
    if (FIFO_len == 2 || rx_data[1] != 0)   // ISO error code
       {
-         print2(5, rx_data[1], __LINE__);
+        m4_print2("ISO error %d at line %d\n", rx_data[1], __LINE__);
         goto error_out;
       }
 
    if (FIFO_len != 9)
       {
-         print2(6, FIFO_len, __LINE__);
+        m4_print2("bad FIFO length %d at line %d\n", FIFO_len, __LINE__);
         goto error_out;
       }
 
@@ -484,10 +482,10 @@ const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
    if (block < 3)     return false;   // OK
    if (block >= 16)   return false;   // OK
 
-    print2(7, block, 8*block);
+   m4_print2("blk %2d  [%3d] ", block, 8*block);
 
 #if !ENOCEAN
-   for (int j = 9; j >= 2; --j)    print1(8, rx_data[j]);
+   for (int j = 9; j >= 2; --j)   m4_print1("%4.4X", rx_data[j]);
 #endif
 
 #if EEPROM_CACHE
@@ -498,25 +496,25 @@ const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
       {
         hist_idx  = rx_data[5];    // mirrored!
         trend_idx = rx_data[4];    // mirrored!
-         print2(9, trend_idx, hist_idx);
+        m4_print2("  trend_idx: #%d  hist_idx: #%d\n", trend_idx, hist_idx);
         return false;   // OK
       }
 
    switch(block % 3)
       {
         case 1: // AAAA-CCCC-BBBB-AAAA
-                 print0(10);
+                m4_print0(" AAAA-CCCC-BBBB-AAAA\n");
                 gluco2(2);   // FIFO is mirrored!
                 break;
 
         case 2: // CCCC-BBBB-AAAA-CCCC
-                 print0(11);
+                m4_print0(" CCCC-BBBB-AAAA-CCCC\n");
                 gluco2(6);   // FIFO is mirrored!
                 gluco2(0);   // FIFO is mirrored!
                 break;
 
         case 0: // BBBB-AAAA-CCCC-BBBB
-                 print0(12);
+                m4_print0(" BBBB-AAAA-CCCC-BBBB\n");
                 gluco2(4);   // FIFO is mirrored!
       }
 
@@ -527,7 +525,7 @@ error_out:
 
    if ((block % 3) == 1)   gluco2_vec[gluco_idx++] = 0;   // 2 values per block
    gluco2_vec[gluco_idx++] = 0;                       // 1 more gluco2_vec
-    print1(13, block);
+   m4_print1("    failed block: #%d\n", block);
    return true;   // error
 }
 //-----------------------------------------------------------------------------
@@ -579,14 +577,14 @@ read_Block(uint8_t block)
      const uint8_t len = read_register(FIFO_STATUS);
      if (len)
         {
-           print2(14, len, __LINE__);
+          m4_print2("FIFO length %d is > 0 at line %d\n", len, __LINE__);
           Reset_FIFO();
         }
 
      const uint8_t stat = read_ISR();
      if (stat)
         {
-           print2(15, stat, __LINE__);
+          m4_print2("non-zero IRQ_STATUS %X at line %d\n", stat, __LINE__);
         }
    }
 
@@ -598,8 +596,8 @@ read_Block(uint8_t block)
 const uint8_t istat = read_ISR();
    if ((istat & 0xC0) != 0xC0)
       {
-           print1(16, istat);
-           print1(17, block);
+          m4_print1("missing Rx or Tx Interrupt (istat = %2.2X)", istat);
+          m4_print1(" block number %d\n", block);
         return true;
       }
 
@@ -628,20 +626,20 @@ int values[32];
 
    // print registers...
    //
-    print0(18);
+   m4_print0("\n     TRF-7970 register dump:\n-----+0-+1-+2-+3-+4-+5-+6-+7");
 
    for (uint8_t w = 0; w < sizeof(which); ++w)
        {
-         if ((w & 7) == 0)    print1(19, w);
-         if      (values[w] == -1)     print0(20);
-         else if (values[w] == -2)     print0(21);
+         if ((w & 7) == 0)   m4_print1("\nr%4.4X;", w);
+         if      (values[w] == -1)    m4_print0(" --");
+         else if (values[w] == -2)    m4_print0(" ??");
          else
             {
-               print1(22, values[w]);
+              m4_print1(" %4.4X", values[w]);
             }
        }
 
-    print0(23);
+   m4_print0("\n\n");
 }
 //-----------------------------------------------------------------------------
 void
@@ -759,9 +757,9 @@ doit()
         beep(battery_beeps, 200, 200);
       }
 
-    print1(24, pass);
-    print1(25, board_status);
-    print1(26, batt_result);
+   m4_print1("pass=%d", pass);
+   m4_print1(" stat=%2.2X", board_status);
+   m4_print1(" batt=%d\n", batt_result);
 
    setup_RFID_reader();
    gluco_idx = 0;
@@ -813,7 +811,7 @@ uint16_t aver_2 = 0;
    write_cache(aver_2);
 #endif
 
-    print1(27, 2*aver_2);   // aver_2 is halved!
+   m4_print1("glucose: %d\n", 2*aver_2);   // aver_2 is halved!
 
 bool raise_alarm = false;
    if (initial_glucose_2 == 0)   // first glucose measurement
@@ -823,8 +821,8 @@ bool raise_alarm = false;
         set_delta_LOW__2(initial_glucose_2);
         set_delta_HIGH__2(initial_glucose_2);
 
-         print1(28, 2*delta_LOW__2);
-         print1(29, 2*delta_HIGH__2);
+        m4_print1("ini-delta_LOW: %d\n",  2*delta_LOW__2);
+        m4_print1("ini-delta_HIGH: %d\n", 2*delta_HIGH__2);
       }
    else if (aver_2 >= initial_glucose_2)   // glucose has increased
       {
@@ -833,7 +831,7 @@ bool raise_alarm = false;
         if (delta_LOW__2)
            {
              set_delta_LOW__2(aver_2);
-              print1(30, 2*delta_LOW__2);
+             m4_print1("new-delta_LOW: %d\n", 2*delta_LOW__2);
            }
 
         board_status = BSTAT_ABOVE_INITIAL;
@@ -851,7 +849,7 @@ bool raise_alarm = false;
         if (delta_HIGH__2)
            {
              set_delta_HIGH__2(aver_2);
-              print1(31, 2*delta_HIGH__2);
+             m4_print1("new-delta_HIGH: %d\n", 2*delta_HIGH__2);
            }
 
         board_status = BSTAT_BELOW_INITIAL;
@@ -907,17 +905,38 @@ const uint8_t calib = user_params.oscillator_calibration;
 #endif
 
 #if MAY_CALIBRATE
-    print2(32, OSCCAL, CLKPR);
+   m4_print2("\n\n\nosc:            x%2.2X\n" "CLKPR:                %d\n",
+             OSCCAL, CLKPR);
 #else
-    print1(33, CLKPR);
+   m4_print1("\n\n\nXTAL clock\n"
+             "CLKPR:            %d\n", CLKPR);
 #endif
-    print2(34, user_params.sensor_slope, user_params.sensor_offset);
-    print2(35, user_params.alarm_HIGH__2  << 1, user_params.alarm_LOW__2   << 1);
-    print2(36, user_params.margin_HIGH__2 << 1, user_params.margin_LOW__2  << 1);
-    print2(37, user_params.battery_1__8 << 3, user_params.battery_2__8 << 3);
-    print2(38, user_params.battery_3__8 << 3, user_params.battery_4__8 << 3);
-    print1(39, user_params.battery_5__8 << 3);
-    print2(40, user_params.read_error_retry__8 << 3, user_params.read_interval__8 << 3);
+   m4_print2("sensor slope:     0.%d\n"
+             "sensor offset:      %3d mg%%\n",
+             user_params.sensor_slope,
+             user_params.sensor_offset);
+   m4_print2("alarm_HIGH:         %3d mg%%\n"
+             "alarm_LOW:          %3d mg%%\n",
+             user_params.alarm_HIGH__2  << 1,
+             user_params.alarm_LOW__2   << 1);
+   m4_print2("margin_HIGH:        %3d mg%%\n"
+             "margin_LOW:         %3d mg%%\n",
+             user_params.margin_HIGH__2 << 1,
+             user_params.margin_LOW__2  << 1);
+   m4_print2("batt_1:            %4d cycles\n"
+             "batt_2:            %4d cycles\n",
+              user_params.battery_1__8 << 3,
+              user_params.battery_2__8 << 3);
+   m4_print2("batt_3:            %4d cycles\n"
+             "batt_4:            %4d cycles\n",
+              user_params.battery_3__8 << 3,
+              user_params.battery_4__8 << 3);
+   m4_print1("batt_5:            %4d cycles\n",
+              user_params.battery_5__8 << 3);
+   m4_print2("read_error_retry:   %3d seconds\n"
+             "read_interval:      %3d seconds\n\n",
+              user_params.read_error_retry__8 << 3,
+              user_params.read_interval__8 << 3);
 
    // transmit a glucose value of 0 as a restart indication and to
    // inform receiver(s) about the battery status.
