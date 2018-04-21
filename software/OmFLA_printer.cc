@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -116,8 +117,27 @@ const char * str = fmt.format;
 }
 //-----------------------------------------------------------------------------
 int
-main(int, char *[])
+usage(const char * prog)
 {
+   cout <<
+"usage:\n"
+"    " << prog << " --help      - print this help and exit, or\n"
+"    " << prog << " -h          - print this help and exit, or\n"
+"    " << prog << " <device>    - use serial <device> (default /dev/ttyAMA0)\n"
+"\n";
+
+   return 0;
+}
+//-----------------------------------------------------------------------------
+int
+main(int argc, char * argv[])
+{
+   if (argc > 1 && !strcmp(argv[1], "-h"))       return usage(argv[0]);
+   if (argc > 1 && !strcmp(argv[1], "--help"))   return usage(argv[0]);
+
+const char * tty_name = "/dev/ttyAMA0";
+   if (argc > 1)   tty_name = argv[1];
+
 int total_chars = 0;
 int values = 0;
 
@@ -129,15 +149,16 @@ int values = 0;
           values += check_format(f);
        }
 
-   cout << FORMATS << " formats,"    << endl
-        << total_chars    << " characters," << endl
-        << values    << " values."     << endl;
+   cout << "\nexpanding "
+        << total_chars    << " characters in "
+        << (FORMATS - 1) << " formats (containing "
+        << values    << " values)...\n"     << endl;
 
-#define tty_name "/dev/ttyAMA0"
 const int fd = open(tty_name, O_RDONLY);
    if (fd == -1)
       {
-         perror("open( " tty_name " ) failed");
+         cerr << "open( " << tty_name << " ) failed: "
+              << strerror(errno) << "," << endl;
          return 1;
       }
 
