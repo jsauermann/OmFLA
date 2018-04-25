@@ -84,7 +84,7 @@ freestyle.cc: printA.m4 freestyle.m4in
 	chmod 444 $@	# prevent accidental editing
 
 string_table.incl: printB.m4 freestyle.m4in
-	[ -f $@ ] && chmod 644 $@ 
+	[ -f $@ ] && chmod 644 $@ || true
 	if [ `which m4` ]; then m4 printB.m4 freestyle.m4in > $@; \
 	elif [ -f $@ ]; then touch $@; fi
 	chmod 444 $@	# prevent accidental editing
