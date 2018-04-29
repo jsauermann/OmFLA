@@ -42,34 +42,6 @@
 
 #include "user_defined_parameters.hh"
 
-// the macro MODE defines one of 3 hardware configurations. In particular
-// it defines:
-//
-// * if an ENOCEAN TCM 310 radio module is installed on the OmFLA PCB,
-// * if the UART is used at all (TCM 310 or debug output), and
-// * if formatted print functions are needed.
-//
-// This is needed so that the entire program fits into the 4k flash memory
-// of an Atmel 4313 chip.
-//
-#if      MODE == 0     // debug output on TxD
-# define ENOCEAN       0
-# define HARD_UART     0
-# define SOFT_UART     1
-# define DEBUG_PRINT   1
-# define EEPROM_CACHE  0
-
-#elif    MODE == 1    // TxD connected to TCM 310
-# define ENOCEAN      1
-# define HARD_UART    1
-# define SOFT_UART    0
-# define DEBUG_PRINT  0
-# define EEPROM_CACHE 1
-
-#else                 // illegal mode
-# error "MODE must be 0 or 1 !"
-#endif
-
 enum EEPROM_addresses
 {
    USER_PARAMS     = 0,      // copy of user_params (14 bytes)
@@ -132,15 +104,8 @@ User_defined_parameters user_params;
 # error "__AVR_ATtiny4313__ is not defined !!!"
 #endif
 
-#if DEBUG_PRINT
-# define print_char(x)           _print_char(x)
-# define print_byte(x)           FIXME!
-#else
-# define print_char(x)
-# define print_byte(x)           _print_char(x)
-#endif
+static void print_char(char ch);
 
-#if ENOCEAN
 static void enable_enocean();
 static void disable_enocean();
 static void transmit_glucose(uint8_t gluco_2);
@@ -150,13 +115,6 @@ static uint8_t crc = 0;
 static uint8_t changed_bitmap[13];   // blocks 3-15 incl.
 static uint8_t changed_values[10];
 static uint8_t changed_idx = 0;
-#else
-# define enable_enocean()
-# define disable_enocean()
-# define  transmit_glucose(gluco_2)
-#  define transmit_change_bitmap()
-#  define transmit_changed_values()
-#endif
 
 #define get_pin(port, bit)    (PIN  ## port &    port ## _ ## bit ? 0xFF : 0x00)
 #define set_pin(port, bit)    (PORT ## port |=   port ## _ ## bit)
@@ -164,27 +122,23 @@ static uint8_t changed_idx = 0;
 #define output_pin(port, bit) (DDR  ## port |=   port ## _ ## bit)
 #define input_pin(port, bit)  (DDR  ## port &= ~ port ## _ ## bit)
 
-#if EEPROM_CACHE
 static void
 write_cache(uint8_t value)
 {
 const uint8_t old = eeprom_read_byte((const uint8_t *)cache);
    if (old != value)   // value change
       {
-#if ENOCEAN
         const uint8_t changed_addr = cache - SENSOR_Cache;
         const uint8_t changed_byte = changed_addr >> 3;
         const uint8_t changed_bit = changed_addr & 7;
         changed_bitmap[changed_byte] |= (0x80 >> changed_bit);
         if (changed_idx < sizeof(changed_values))
            changed_values[changed_idx++] = value;
-#endif
         eeprom_write_byte((uint8_t *)cache, value);
       }
 
    ++cache;
 }
-#endif
 
 enum IO_pins
 {
@@ -206,28 +160,12 @@ enum IO_pins
    B_RFID_EN   = B_PROG_SCL,   // active high RFID enable output
    B_JUMPER    = B_PROG_MOSI,  // beep mute jumper
 
-#if HARD_UART
-   outputs_B   = B_BTEST_OUT
-               | B_MOSI
-               | B_TCM_POWER
-               | B_LED_GREEN
-  ///          | __PROG_MISO // maybe connected to TxD
-               | B_RFID_EN,
-#elif SOFT_UART
    outputs_B   = B_BTEST_OUT
                | B_MOSI
                | B_TCM_POWER
                | B_LED_GREEN
                | B_PROG_MISO  // soft UART TxD
                | B_RFID_EN,
-#else
-   outputs_B   = B_BTEST_OUT
-               | B_MOSI
-               | B_TCM_POWER
-               | B_LED_GREEN
-               | B_PROG_MISO  // UART TxD and PROG_MISO both driven low
-               | B_RFID_EN,
-#endif
    pullup_B = B_JUMPER,
 
    D_TCM_RxD   = 1 << PD0,   // RxD from TCM 310 radio module
@@ -334,9 +272,7 @@ sleep_ms(uint32_t milli_secs)
 #define MAX_FIFO 10
 #include "RFID_functions.cc"
 
-#if ENOCEAN
 # include "enocean.cc"
-#endif
 //-----------------------------------------------------------------------------
 static void
 init_hardware()
@@ -426,8 +362,7 @@ const uint32_t raw_sensor = h << 8 | l;           // total 12 bits
 const uint16_t glucose = user_params.sensor_offset
                        + ((raw_sensor * user_params.sensor_slope) / 1000);
 
-    print2(2, gluco_idx, raw_sensor);
-    print1(3, glucose);
+    print2(2, raw_sensor, glucose);
 
    gluco2_vec[gluco_idx++] = glucose >> 1;
 }
@@ -458,7 +393,7 @@ decode_Block(uint8_t block)
 const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
    if (FIFO_len > MAX_FIFO)
       {
-         print2(4, FIFO_len, __LINE__);
+         print2(3, FIFO_len, __LINE__);
         goto error_out;
       }
 
@@ -469,13 +404,13 @@ const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
    //
    if (FIFO_len == 2 || rx_data[1] != 0)   // ISO error code
       {
-         print2(5, rx_data[1], __LINE__);
+         print2(4, rx_data[1], __LINE__);
         goto error_out;
       }
 
    if (FIFO_len != 9)
       {
-         print2(6, FIFO_len, __LINE__);
+         print2(5, FIFO_len, __LINE__);
         goto error_out;
       }
 
@@ -484,40 +419,44 @@ const uint8_t FIFO_len = read_register(FIFO_STATUS) & 0x7F;
    if (block < 3)     return false;   // OK
    if (block >= 16)   return false;   // OK
 
-    print2(7, block, 8*block);
+    print2(6, block, 8*block);
 
-#if !ENOCEAN
-   for (int j = 9; j >= 2; --j)    print1(8, rx_data[j]);
-#endif
-
-#if EEPROM_CACHE
-   for (uint8_t j = 2; j <= 9; ++j)   write_cache(rx_data[j]);
-#endif
+   for (uint8_t j = 2; j <= 9; ++j)
+       {
+          write_cache(rx_data[j]);
+           print1(7, rx_data[11 - j]);
+       }
 
    if (block == 3)
       {
-        hist_idx  = rx_data[5];    // mirrored!
-        trend_idx = rx_data[4];    // mirrored!
-         print2(9, trend_idx, hist_idx);
+        hist_idx  = rx_data[5];
+        trend_idx = rx_data[4];
+         print2(8, trend_idx, hist_idx);
         return false;   // OK
       }
 
+   // every ISO block contains 8 bytes resp. 4 16-bit measurements. There are 3
+   // kinds of measurements, say aaaa, GGGG, and bbbb. The GGGG measurements are
+   // raw glocose values while the nature of of measurements aaaa and bbbb is
+   // currently unknown (one of them is probably a temperature value).
+   //
    switch(block % 3)
       {
-        case 1: // AAAA-CCCC-BBBB-AAAA
+        case 0:            // 0011-2233-4455-6677
+                 print0(9);
+                gluco2(4); //           ^^^^
+                break;
+
+        case 1:            // 0011-2233-4455-6677
                  print0(10);
-                gluco2(2);   // FIFO is mirrored!
+                gluco2(2); //      ^^^^
                 break;
 
-        case 2: // CCCC-BBBB-AAAA-CCCC
+        case 2:            // 0011-2233-4455-6677
                  print0(11);
-                gluco2(6);   // FIFO is mirrored!
-                gluco2(0);   // FIFO is mirrored!
+                gluco2(6); //                ^^^^
+                gluco2(0); // ^^^^
                 break;
-
-        case 0: // BBBB-AAAA-CCCC-BBBB
-                 print0(12);
-                gluco2(4);   // FIFO is mirrored!
       }
 
    return false;   // OK
@@ -527,36 +466,8 @@ error_out:
 
    if ((block % 3) == 1)   gluco2_vec[gluco_idx++] = 0;   // 2 values per block
    gluco2_vec[gluco_idx++] = 0;                       // 1 more gluco2_vec
-    print1(13, block);
+    print1(12, block);
    return true;   // error
-}
-//-----------------------------------------------------------------------------
-const uint8_t setup[] =
-{
-    CONT | CHIP_STATE_CONTROL,
-    CHIP_STATE_RF_On,   // chip status:
-    ISO_MODE,
-    0x00,        // ISO_14443B_OPTIONS
-    0x00,        // ISO_14443A_OPTIONS
-    0xC1,        // TX_TIMER_EPC_HIGH
-    0xBB,        // TX_TIMER_EPC_LOW
-    0x00,        // TX_PULSE_LENGTH_CONTROL
-    0x30,        // RX_NO_RESPONSE_WAIT_TIME
-    0x1F,        // RX_WAIT_TIME
-    0x01,        // MODULATOR_CONTROL
-    0x40,        // RX_SPECIAL_SETTINGS = 424-kHz subcarrier for ISO 15693
-    0x03,        // REGULATOR_CONTROL
-};
-//-----------------------------------------------------------------------------
-inline void
-setup_RFID_reader()
-{
-   set_pin(B, RFID_EN);
-   sleep_ms(10);
-   init_RFID_reader();
-
-   SPI_transfer(setup, 0, sizeof(setup));
-   sleep_ms(10);   // > 6 ms
 }
 //-----------------------------------------------------------------------------
 uint8_t iso_read_block[8] =
@@ -576,17 +487,16 @@ read_Block(uint8_t block)
    // at this point we expect: FIFO empty and interrupts off.
    //
    {
-     const uint8_t len = read_register(FIFO_STATUS);
+     const uint16_t len = read_register(FIFO_STATUS);
      if (len)
         {
-           print2(14, len, __LINE__);
+           print2(13, len, __LINE__);
           Reset_FIFO();
         }
 
-     const uint8_t stat = read_ISR();
-     if (stat)
+     if (const uint16_t stat = read_ISR())
         {
-           print2(15, stat, __LINE__);
+           print2(14, stat, __LINE__);
         }
    }
 
@@ -598,8 +508,8 @@ read_Block(uint8_t block)
 const uint8_t istat = read_ISR();
    if ((istat & 0xC0) != 0xC0)
       {
-           print1(16, istat);
-           print1(17, block);
+         print1(15, istat);
+         print1(16, block);
         return true;
       }
 
@@ -622,26 +532,26 @@ int values[32];
    for (uint8_t w = 0; w < sizeof(which); ++w)
        {
          const Register reg = (Register)(which[w]);
-          if (reg != 0xFF)   values[w] = read_register(reg);
-          else               values[w] = -1;
+         if (reg != 0xFF)   values[w] = read_register(reg);
+         else               values[w] = -1;
        }
 
    // print registers...
    //
-    print0(18);
+    print0(17);
 
    for (uint8_t w = 0; w < sizeof(which); ++w)
        {
-         if ((w & 7) == 0)    print1(19, w);
-         if      (values[w] == -1)     print0(20);
-         else if (values[w] == -2)     print0(21);
+         if ((w & 7) == 0)    print1(18, w);
+         if      (values[w] == -1)     print0(19);
+         else if (values[w] == -2)     print0(20);
          else
             {
-               print1(22, values[w]);
+               print1(21, values[w]);
             }
        }
 
-    print0(23);
+    print0(22);
 }
 //-----------------------------------------------------------------------------
 void
@@ -759,18 +669,19 @@ doit()
         beep(battery_beeps, 200, 200);
       }
 
-    print1(24, pass);
-    print1(25, board_status);
-    print1(26, batt_result);
+    print2(23, pass, board_status);
+
+    print2(24, batt_result, id2);
+    print2(25, id3, id4);
+    print1(26, id_valid);
 
    setup_RFID_reader();
    gluco_idx = 0;
 
    cache = SENSOR_Cache;
-#if ENOCEAN
    memset(changed_bitmap, 0, sizeof(changed_bitmap));
    changed_idx = 0;
-#endif
+
    for (uint8_t b = 3; b < 15; ++b)
        {
          if (read_Block(b) || decode_Block(b))
@@ -779,7 +690,6 @@ doit()
                board_status = BSTAT_RFID_ERROR;
                enable_enocean();
                transmit_glucose(0);
-               disable_enocean();
                beep(3, 100, 100);
                return 8000*int32_t(user_params.read_error_retry__8);
             }
@@ -799,7 +709,6 @@ uint16_t aver_2 = 0;
    for (int8_t j = 3; j < end; ++j)  aver_2 += gluco2_vec[j];
    aver_2 /= (sizeof(gluco2_vec) - 6);
 
-#if EEPROM_CACHE
    write_cache(pass);
    write_cache(aver_2);
    write_cache(initial_glucose_2);
@@ -811,7 +720,6 @@ uint16_t aver_2 = 0;
    write_cache(aver_2);
    cache = GLUCO_history + (hist_idx & 0x1F);
    write_cache(aver_2);
-#endif
 
     print1(27, 2*aver_2);   // aver_2 is halved!
 
@@ -823,8 +731,7 @@ bool raise_alarm = false;
         set_delta_LOW__2(initial_glucose_2);
         set_delta_HIGH__2(initial_glucose_2);
 
-         print1(28, 2*delta_LOW__2);
-         print1(29, 2*delta_HIGH__2);
+         print2(28, 2*delta_LOW__2, 2*delta_HIGH__2);
       }
    else if (aver_2 >= initial_glucose_2)   // glucose has increased
       {
@@ -833,7 +740,7 @@ bool raise_alarm = false;
         if (delta_LOW__2)
            {
              set_delta_LOW__2(aver_2);
-              print1(30, 2*delta_LOW__2);
+              print1(29, 2*delta_LOW__2);
            }
 
         board_status = BSTAT_ABOVE_INITIAL;
@@ -851,7 +758,7 @@ bool raise_alarm = false;
         if (delta_HIGH__2)
            {
              set_delta_HIGH__2(aver_2);
-              print1(31, 2*delta_HIGH__2);
+              print1(30, 2*delta_HIGH__2);
            }
 
         board_status = BSTAT_BELOW_INITIAL;
@@ -870,7 +777,6 @@ bool raise_alarm = false;
    transmit_change_bitmap();
    transmit_changed_values();
    transmit_glucose(aver_2);
-   disable_enocean();
 
    if (raise_alarm)   // glucose is too low or too high
       {
@@ -900,31 +806,24 @@ const uint8_t calib = user_params.oscillator_calibration;
    else                 OSCCAL = CPU_CALIB;
 #endif
 
-#if ENOCEAN
-   for (const char * p = "\n\nENO-RES\n\n"; *p;)   print_byte(*p++);
-#else
-   for (uint8_t j = 0; j < 4; ++j)   print_char(0);
-#endif
-
 #if MAY_CALIBRATE
-    print2(32, OSCCAL, CLKPR);
+    print2(31, OSCCAL, CLKPR);
 #else
-    print1(33, CLKPR);
+    print1(32, CLKPR);
 #endif
-    print2(34, user_params.sensor_slope, user_params.sensor_offset);
-    print2(35, user_params.alarm_HIGH__2  << 1, user_params.alarm_LOW__2   << 1);
-    print2(36, user_params.margin_HIGH__2 << 1, user_params.margin_LOW__2  << 1);
-    print2(37, user_params.battery_1__8 << 3, user_params.battery_2__8 << 3);
-    print2(38, user_params.battery_3__8 << 3, user_params.battery_4__8 << 3);
-    print1(39, user_params.battery_5__8 << 3);
-    print2(40, user_params.read_error_retry__8 << 3, user_params.read_interval__8 << 3);
+    print2(33, user_params.sensor_slope, user_params.sensor_offset);
+    print2(34, user_params.alarm_HIGH__2  << 1, user_params.alarm_LOW__2   << 1);
+    print2(35, user_params.margin_HIGH__2 << 1, user_params.margin_LOW__2  << 1);
+    print2(36, user_params.battery_1__8 << 3, user_params.battery_2__8 << 3);
+    print2(37, user_params.battery_3__8 << 3, user_params.battery_4__8 << 3);
+    print1(38, user_params.battery_5__8 << 3);
+    print2(39, user_params.read_error_retry__8 << 3, user_params.read_interval__8 << 3);
 
    // transmit a glucose value of 0 as a restart indication and to
    // inform receiver(s) about the battery status.
    //
    enable_enocean();
    transmit_glucose(0);
-   disable_enocean();
 
    for (pass = 0;; ++pass)
        {

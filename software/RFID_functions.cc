@@ -167,6 +167,34 @@ init_RFID_reader()
    write_register(NFC_TARGET_LEVEL, 0x00);   // fix TI bug
 }
 //-----------------------------------------------------------------------------
+const uint8_t setup[] =
+{
+    CONT | CHIP_STATE_CONTROL,
+    CHIP_STATE_RF_On,   // chip status:
+    ISO_MODE,
+    0x00,        // ISO_14443B_OPTIONS
+    0x00,        // ISO_14443A_OPTIONS
+    0xC1,        // TX_TIMER_EPC_HIGH
+    0xBB,        // TX_TIMER_EPC_LOW
+    0x00,        // TX_PULSE_LENGTH_CONTROL
+    0x30,        // RX_NO_RESPONSE_WAIT_TIME
+    0x1F,        // RX_WAIT_TIME
+    0x01,        // MODULATOR_CONTROL
+    0x40,        // RX_SPECIAL_SETTINGS = 424-kHz subcarrier for ISO 15693
+    0x03,        // REGULATOR_CONTROL
+};
+//-----------------------------------------------------------------------------
+inline void
+setup_RFID_reader()
+{
+   set_pin(B, RFID_EN);
+   sleep_ms(10);
+   init_RFID_reader();
+
+   SPI_transfer(setup, 0, sizeof(setup));
+   sleep_ms(10);   // > 6 ms
+}
+//-----------------------------------------------------------------------------
 static void
 RF_Off()
 {

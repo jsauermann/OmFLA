@@ -50,8 +50,8 @@ unsigned char cl;
 ssize_t len = read(fd, &ch, 1);   if (len != 1)   exit(0);
         len = read(fd, &cl, 1);   if (len != 1)   exit(0);
 
-   if (ch & 0x80)   return ~0xFFFF | ch << 8 | cl;
-   else             return           ch << 8 | cl;
+   if (ch & 0x80)   return (~0xFFFF) | ch << 8 | cl;
+   else             return             ch << 8 | cl;
 }
 //-----------------------------------------------------------------------------
 void

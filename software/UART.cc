@@ -27,7 +27,6 @@
  UART, which is almost impossible for a software UART at 57600 baud.
  */
 
-#if SOFT_UART
 # define SOFT_PORT_1 PORTB
 # define SOFT_PBIT_1 B_PROG_MISO
 # define SOFT_PORT_2 PORTD
@@ -45,16 +44,11 @@ enum CPU_cycles
 
 static uint8_t soft_count = SOFT_COUNT;
 
-#endif   // SOFT_UART
-
-
-#if HARD_UART || SOFT_UART
 static void
-_print_char(uint8_t ch)
+print_byte(uint8_t ch)
 {
    // update CRC if needed
    //
-# if ENOCEAN
    enum { polynom = 0x07 };   // (x^8) + x^2 + x^1 + x^0
    crc ^= ch;
    for (uint8_t i = 0; i < 8; i++)
@@ -63,14 +57,16 @@ _print_char(uint8_t ch)
          crc <<= 1;
          if (crc_high)   crc ^= polynom;
        }
-# endif  // ENOCEAN
 
    // transmit the character
    //
-# if HARD_UART
    while (!(UCSRA & 1 << UDRE))   ;   // wait for DR empty
    UDR = ch;
-# else   // SOFT_UART
+}
+
+static void
+print_char(char ch)
+{
    //
    //             ╔╦═════════════════  stop bit(s)
    //             ║║     ╔╦══════════  8 data bits
@@ -94,15 +90,11 @@ int16_t bits = (0xFF00 | ch) << 1;
          _delay_loop_1(soft_count);
        }
 
-# endif // HARD_UART vs. SOFT_UART
 }
-#endif // HARD_UART || SOFT_UART
-
 //-----------------------------------------------------------------------------
 inline void
 init_uart()
 {
-#if HARD_UART
    // UART
    //
    enum
@@ -117,10 +109,6 @@ init_uart()
    disable_enocean();   // empty unless ENOCEAN is #defined as well
    UCSRB = 0 << RXEN | 1 << TXEN;
    UCSRC = 1 << USBS | 3 << UCSZ0;   // async, 2 stop, 8 data
-#elif SOFT_UART
-   SOFT_PORT_1 |= SOFT_PBIT_1;   // set TxD high
-   SOFT_PORT_2 |= SOFT_PBIT_2;   // set TxD high
-#endif
 }
 
 

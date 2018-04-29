@@ -33,48 +33,9 @@ only the EEPROM of the device, not touching the flash memory.
 2. Firmware Variants
 --------------------
 
-The Makefile produces 2 different firmware variants from the same source file
-freestyle.m4in. Only one of these variants shall be flashed into the Atmel chip.
-The variants and the differences between them are the following:
-
-2.1 freestyle_deb
------------------
-
-This is the Atmel firmware variant for the "normal user" (that's you). It
-produces some debug output on Pin 1 of J15, see hardware/README.Connector-J15.
-The debug output is serial (active low, 3.3V (not V.24) 8N1 at 57600 Baud.
-
-In order to save program space of the Atmel 4313, the format strings of all
-printf() functions were replaced by 1-byte indices into a string table
-(contained in file software/string_table.incl). The full debug output can
-be reconstructed by a client running the utility program OmFLA_printer (which
-also sets up the proper serial parameters),.
-
-
-2.2 freestyle_eno
------------------
-
-This Atmel firmware variant can be used to send the measured glucose values
-and the current battery level to a remote computer within, say, 20 meters
-of the OMFLA device. This needs an enocean TCM310 device on the OMFLA PCB.
-The power consumption is somewhat higher. There exist reasonably cheap TCM310
-receivers for the Raspberry Pi. Frame format is according to the VLD (variable
-length data) profile. Currently 3 bytes are sent: Glucose/2, battery-high and
-battery-low. Battery level is the number of CPU cycles to charge an RC circuit
-(consisting of C6 = 22 nF and an Atmel 4313 input pull-up of 20-50 kOhm) to the
-Atmel's band-gap reference of 1.0-1.2 Volts). The Atmel 4313 runs at 3.6864 MHz.
-
-
-2.3 freestyle_nod
------------------
-
-This used to be the Atmel firmware for the "normal user" (that's you). This
-variant is now obsolete and is no longer created by the current Makefile. The
-freestyle_nod image used to have less (almost no) debug output in order to
-produce a smaller image. However, a new print mechanism has moved all printf()
-format strings (which used to take around 1/4 of the entire program space of
-the Atmel to a new utility program (OmFLA_printer). As a consequence the
-difference between the debug and the no-debug firmware variants has become so
-small that the no-debug firmware variant was removed.
+There used to be 2 or 3 different firmware images for different hardware
+configurations of the OmFLA device. All those images were built from the same
+source files. As of SVN 68, however, a single image - freestyle.hex - is used
+for all hardware configurations of the OmFLA device.
 
 

@@ -45,15 +45,9 @@ RLOW = $(shell grep -v '^//' user_defined_parameters.hh | grep RELATIVE_LOW | aw
 SLOPE = $(shell grep -v '^//' user_defined_parameters.hh | grep SENSOR_SLOPE | awk '{print $$3}')
 OFFSET = $(shell grep -v '^//' user_defined_parameters.hh | grep SENSOR_OFFSET | awk '{print $$3}')
 
-# target variants:
-#
-# freestyle_deb: debugging (UART) enabled,   no enocean TCM 310 not installed
-# freestyle_eno: debugging (UART) disabled,  enocean TCM 310 installed
-# 
 all:	beeper_test.hex   \
 	calibrate.hex     \
-	freestyle_eno.hex \
-	freestyle_deb.hex \
+	freestyle.hex \
 	eeprom.data       \
 	OmFLA_printer
 
@@ -62,8 +56,7 @@ help:
 	@echo "    all:          compile the source files"
 	@echo "    info:         show some useful avrdude commands"
 	@echo "    clean:        remove generated files"
-	@echo "    flash_deb:    all + flash the debug version of freestyle.cc"
-	@echo "    flash_eno:    all + flash the encocean version of freestyle.cc"
+	@echo "    flash:        make all and flash it into the device.cc"
 	@echo "    flash_beep:   all + flash the beeper test program"
 	@echo "    flash_cal:    all + flash the CPU calibration program"
 	@echo "    signature:    read and show the signature of the device"
@@ -78,7 +71,7 @@ help:
 	@echo
 
 freestyle.cc: printA.m4 freestyle.m4in
-	[ -f $@ ] && chmod 644 $@ 
+	[ -f $@ ] && chmod 644 $@ || true
 	if [ `which m4` ]; then m4 printA.m4 freestyle.m4in > $@; \
 	elif [ -f $@ ]; then touch $@; fi
 	chmod 444 $@	# prevent accidental editing
@@ -95,13 +88,10 @@ beeper_test.elf: beeper_test.cc Makefile
 calibrate.elf: calibrate.cc Makefile
 	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) $< -o $@
 
-COMMON = freestyle.cc RFID_functions.cc user_defined_parameters.hh
+COMMON = freestyle.cc RFID_functions.cc user_defined_parameters.hh UART.cc
 
-freestyle_deb.elf: $(COMMON) Makefile
-	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) -D MODE=0 $< -o $@
-
-freestyle_eno.elf: $(COMMON) enocean.cc Makefile
-	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) -D MODE=1 $< -o $@
+freestyle.elf: $(COMMON) enocean.cc Makefile
+	$(CXX) -Wl,-Map,$*.map $(CXX_FLAGS) $< -o $@
 
 %.lss: %.elf
 	$(OBJDUMP) -h -S $< > $@
@@ -118,12 +108,7 @@ clean:
 
 # device programming (flashing) targets...
 #
-flash_deb:	freestyle_deb.hex eeprom.data
-	$(DUDE) -U flash:w:$<
-	$(DUDE) -U eeprom:w:eeprom.data:r
-	true
-
-flash_eno:	freestyle_eno.hex eeprom.data
+flash:	freestyle.hex eeprom.data
 	$(DUDE) -U flash:w:$<:i
 	$(DUDE) -U eeprom:w:eeprom.data:r
 	true
