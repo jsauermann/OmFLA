@@ -8,21 +8,51 @@ A. Computation of the current glucose level
 every minute, and a "history table" which is updated every 15 minutes. Both
 tables are ring buffers.
 
-2. Each table contains 3 different measurements, say A, B, and C. The
-measurements are interleaved in a slightly irregular way. Every table
-update changes 4 measurements, so that, for example one update could have
-one A measurement while another has two. As of this writing, we know that
-measurement "C" is some "raw" glucose value, and that one of the remaining
-measurements "A" and "B" is somehow related to temperature.
+2. Each table contains 3 different kinds of measurement, say A, B, and C.
+Each measurement is 16 bits. The RFID reader in the OmFLA reads data in
+blocks of 64 bit (the blocks are also called ISO 15693 registers in the RFID
+reader documentation). For that reason in every read of the sensor one of the
+measurements A, B, and C occurs twice. The trend table starts at ISO 15693
+register 4, leading to the following distribution of measurements A, B, and C:
+
+block       16-bit Measurements       Reading index
+(ISO reg)    M1   M2   M3   M4      M1   M2   M3   M4
+------------------------------------------------------
+  4         AAAA-BBBB-CCCC-AAAA    1111-1111-1111-2222
+  5         BBBB-CCCC-AAAA-BBBB    2222-2222-3333-3333
+  6         CCCC-AAAA-BBBB-CCCC    3333-4444-4444-4444
+  7         AAAA-BBBB-CCCC-AAAA    5555-5555-5555-6666
+  8         BBBB-CCCC-AAAA-BBBB    6666-6666-7777-7777
+  9         CCCC-AAAA-BBBB-CCCC    7777-8888-8888-8888
+ 10         AAAA-BBBB-CCCC-AAAA    9999-9999-9999- ...
+ 11         BBBB-CCCC-AAAA-BBBB
+ 12         CCCC-AAAA-BBBB-CCCC
+ 13         AAAA-BBBB-CCCC-AAAA
+ 14         BBBB-CCCC-AAAA-BBBB
+------------------------------------------------------
+
+Every minute the glucose sensor updates 3 16-bit fields in the table, causing
+either one or two blocks to be overridden with new values. The reading index
+(the position of the 3 fields in the table, aka. the FIFO's put pointer) are
+contained in block 3 (which contains 2 indices: one for the trend table and
+one for the history table.
+
+The first thing that the OmFLA algorithm does is to filter out the raw glucose
+values that are contained int the trend table.
 
 3. We ignore the history table entirely, because its values are too old for
 alarm purposes.
 
 4. every 5 minutes (the interval can be configured by the user) we read the
-entire trend table. The trend table contains 14 raw glucose values; the A and
-B measurements in the table are being ignored because we simply don't know
-what they are. The 3 upper and 3 lower raw values are discarded, so that 9 raw
-glucose values remain.
+entire trend table and filter out those 16 bit values that relate to raw
+glucose values. Each glucose value has only 12 bits, therefore the upper 4
+bits of every raw glucose value is discarded (set to 0).
+
+The A and B measurements in the table are being ignored because we don't know
+what they are and how they influence the reported glucose value. Then the raw
+glucose values are sorted and the 3 upper and the 3 lower raw values (potential
+outliers) are discarded, This is to smooth out sensor tolerances, After that,
+9 middle glucose values remain.
 
 5. The average of the 9 raw values is computed.
 
