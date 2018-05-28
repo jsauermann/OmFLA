@@ -11,8 +11,8 @@ tables are ring buffers.
 2. Each table contains 3 different measurements, say A, B, and C. The
 measurements are interleaved in a slightly irregular way. Every table
 update changes 4 measurements, so that, for example one update could have
-one A measurement while another has two. As of this wiring, we know that
-measurement "C" some a "raw" glucose value, and that one of the remaining
+one A measurement while another has two. As of this writing, we know that
+measurement "C" is some "raw" glucose value, and that one of the remaining
 measurements "A" and "B" is somehow related to temperature.
 
 3. We ignore the history table entirely, because its values are too old for

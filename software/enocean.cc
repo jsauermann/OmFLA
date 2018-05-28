@@ -223,8 +223,8 @@ crc = 0;
    sleep_ms(100);   // time to finish transmission
 }
 //-----------------------------------------------------------------------------
-inline void
-transmit_changed_values()
+static void
+transmit_changed_values(uint8_t from)
 {
    // message has 1 + (CB_LEN + changed_idx) bytes:
    //
