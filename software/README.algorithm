@@ -37,9 +37,6 @@ either one or two blocks to be overridden with new values. The reading index
 contained in block 3 (which contains 2 indices: one for the trend table and
 one for the history table.
 
-The first thing that the OmFLA algorithm does is to filter out the raw glucose
-values that are contained in the trend table.
-
 3. We ignore the history table entirely, because its values are too old for
 alarm purposes.
 
