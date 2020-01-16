@@ -19,7 +19,7 @@ int fixed_contrast = 0;
 
 //-----------------------------------------------------------------------------
 /// broadcom pin numbers (GPIO) or PWM channels
-enum Brodcom_pin
+enum Broadcom_pin
 {
    PWM_0  = 0,
    PWM_1  = 1,
@@ -46,7 +46,7 @@ enum Pin_Type
 class GPIO_pin
 {
 public:
-   GPIO_pin(Brodcom_pin num, Pin_Type pt);
+   GPIO_pin(Broadcom_pin num, Pin_Type pt);
    ~GPIO_pin()
       { if (fd != -1)   close(fd); }
 
@@ -62,7 +62,7 @@ public:
    int fd;
 };
 //-----------------------------------------------------------------------------
-GPIO_pin::GPIO_pin(Brodcom_pin num, Pin_Type pt)
+GPIO_pin::GPIO_pin(Broadcom_pin num, Pin_Type pt)
    : fd(-1)
 {
 char filename[40];
@@ -116,17 +116,17 @@ int flags = 0;
 class PWM_pin
 {
 public:
-   PWM_pin(Brodcom_pin chan);
+   PWM_pin(Broadcom_pin chan);
 
    int write_period(int len);
    int write_duty_cycle(int len);
    int write_enable(bool yes);
 
 protected:
-   const Brodcom_pin channel;
+   const Broadcom_pin channel;
 };
 //-----------------------------------------------------------------------------
-PWM_pin::PWM_pin(Brodcom_pin chan)
+PWM_pin::PWM_pin(Broadcom_pin chan)
    : channel(chan)
 {
 char filename[40];
