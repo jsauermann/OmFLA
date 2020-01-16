@@ -745,7 +745,7 @@ asciidoc.install(4);
 <div class="sect2">
 <h3 id="_overview">Overview</h3>
 <div class="paragraph"><p>Unlike other Raspberry hats, this hat is larger than the Raspberry Zero, so
-the raspberry is plugged onto the hat rather than the hat being pluggend onto
+the raspberry is plugged onto the hat rather than the hat being plugged onto
 the rapberry.</p></div>
 <div class="paragraph"><p>Although the hat was designed for the Raspberry Pi Zero form factor, it
 supposedly also works for other Raspberry Pi models.</p></div>
@@ -1602,19 +1602,15 @@ cellspacing="0" cellpadding="4">
 <tbody>
 <tr>
 <td align="center" valign="top"><p class="table">1</p></td>
-<td align="center" valign="top"><p class="table">Neutral (N)</p></td>
+<td align="center" valign="top"><p class="table">Line out if Relay-1 is ON</p></td>
 </tr>
 <tr>
 <td align="center" valign="top"><p class="table">2</p></td>
-<td align="center" valign="top"><p class="table">Line out if Relay is OFF</p></td>
+<td align="center" valign="top"><p class="table">Neutral (N)</p></td>
 </tr>
 <tr>
 <td align="center" valign="top"><p class="table">3</p></td>
 <td align="center" valign="top"><p class="table">Line in (L)</p></td>
-</tr>
-<tr>
-<td align="center" valign="top"><p class="table">2</p></td>
-<td align="center" valign="top"><p class="table">Line out if Relay is ON</p></td>
 </tr>
 </tbody>
 </table>
@@ -1636,15 +1632,15 @@ cellspacing="0" cellpadding="4">
 <tbody>
 <tr>
 <td align="center" valign="top"><p class="table">1</p></td>
-<td align="center" valign="top"><p class="table">Line out if Relay is OFF</p></td>
+<td align="center" valign="top"><p class="table">Line out if Relay-2 is OFF</p></td>
 </tr>
 <tr>
 <td align="center" valign="top"><p class="table">2</p></td>
-<td align="center" valign="top"><p class="table">Line in (L)</p></td>
+<td align="center" valign="top"><p class="table">Line out if Relay-1 is OFF</p></td>
 </tr>
 <tr>
 <td align="center" valign="top"><p class="table">3</p></td>
-<td align="center" valign="top"><p class="table">Line out if Relay is ON</p></td>
+<td align="center" valign="top"><p class="table">Line out if Relay-2 is ON</p></td>
 </tr>
 </tbody>
 </table>
@@ -1672,12 +1668,12 @@ cellspacing="0" cellpadding="4">
 <tr>
 <td align="center" valign="top"><div class="verse"> GPIO-17 </div></td>
 <td align="center" valign="top"><div class="verse"> GPIO-0 </div></td>
-<td align="center" valign="top"><p class="table">Relay J9  ON/OFF</p></td>
+<td align="center" valign="top"><p class="table">Relay-1  ON/OFF</p></td>
 </tr>
 <tr>
 <td align="center" valign="top"><div class="verse"> GPIO-27 </div></td>
 <td align="center" valign="top"><div class="verse"> GPIO-2 </div></td>
-<td align="center" valign="top"><p class="table">Relay J10 ON/OFF</p></td>
+<td align="center" valign="top"><p class="table">Relay-2  ON/OFF</p></td>
 </tr>
 </tbody>
 </table>
@@ -1793,7 +1789,7 @@ cellspacing="0" cellpadding="4">
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2020-01-10 20:16:47 CET
+Last updated 2020-01-16 21:37:59 CET
 </div>
 </div>
 </body>
