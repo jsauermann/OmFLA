@@ -1,0 +1,1800 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
+<meta name="generator" content="AsciiDoc 8.6.9" />
+<title></title>
+<style type="text/css">
+/* Shared CSS for AsciiDoc xhtml11 and html5 backends */
+
+/* Default font. */
+body {
+  font-family: Georgia,serif;
+}
+
+/* Title font. */
+h1, h2, h3, h4, h5, h6,
+div.title, caption.title,
+thead, p.table.header,
+#toctitle,
+#author, #revnumber, #revdate, #revremark,
+#footer {
+  font-family: Arial,Helvetica,sans-serif;
+}
+
+body {
+  margin: 1em 5% 1em 5%;
+}
+
+a {
+  color: blue;
+  text-decoration: underline;
+}
+a:visited {
+  color: fuchsia;
+}
+
+em {
+  font-style: italic;
+  color: navy;
+}
+
+strong {
+  font-weight: bold;
+  color: #083194;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #527bbd;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+
+h1, h2, h3 {
+  border-bottom: 2px solid silver;
+}
+h2 {
+  padding-top: 0.5em;
+}
+h3 {
+  float: left;
+}
+h3 + * {
+  clear: left;
+}
+h5 {
+  font-size: 1.0em;
+}
+
+div.sectionbody {
+  margin-left: 0;
+}
+
+hr {
+  border: 1px solid silver;
+}
+
+p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+ul, ol, li > p {
+  margin-top: 0;
+}
+ul > li     { color: #aaa; }
+ul > li > * { color: black; }
+
+.monospaced, code, pre {
+  font-family: "Courier New", Courier, monospace;
+  font-size: inherit;
+  color: navy;
+  padding: 0;
+  margin: 0;
+}
+pre {
+  white-space: pre-wrap;
+}
+
+#author {
+  color: #527bbd;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+#email {
+}
+#revnumber, #revdate, #revremark {
+}
+
+#footer {
+  font-size: small;
+  border-top: 2px solid silver;
+  padding-top: 0.5em;
+  margin-top: 4.0em;
+}
+#footer-text {
+  float: left;
+  padding-bottom: 0.5em;
+}
+#footer-badges {
+  float: right;
+  padding-bottom: 0.5em;
+}
+
+#preamble {
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+div.imageblock, div.exampleblock, div.verseblock,
+div.quoteblock, div.literalblock, div.listingblock, div.sidebarblock,
+div.admonitionblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.admonitionblock {
+  margin-top: 2.0em;
+  margin-bottom: 2.0em;
+  margin-right: 10%;
+  color: #606060;
+}
+
+div.content { /* Block element content. */
+  padding: 0;
+}
+
+/* Block element titles. */
+div.title, caption.title {
+  color: #527bbd;
+  font-weight: bold;
+  text-align: left;
+  margin-top: 1.0em;
+  margin-bottom: 0.5em;
+}
+div.title + * {
+  margin-top: 0;
+}
+
+td div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content + div.title {
+  margin-top: 0.0em;
+}
+
+div.sidebarblock > div.content {
+  background: #ffffee;
+  border: 1px solid #dddddd;
+  border-left: 4px solid #f0f0f0;
+  padding: 0.5em;
+}
+
+div.listingblock > div.content {
+  border: 1px solid #dddddd;
+  border-left: 5px solid #f0f0f0;
+  background: #f8f8f8;
+  padding: 0.5em;
+}
+
+div.quoteblock, div.verseblock {
+  padding-left: 1.0em;
+  margin-left: 1.0em;
+  margin-right: 10%;
+  border-left: 5px solid #f0f0f0;
+  color: #888;
+}
+
+div.quoteblock > div.attribution {
+  padding-top: 0.5em;
+  text-align: right;
+}
+
+div.verseblock > pre.content {
+  font-family: inherit;
+  font-size: inherit;
+}
+div.verseblock > div.attribution {
+  padding-top: 0.75em;
+  text-align: left;
+}
+/* DEPRECATED: Pre version 8.2.7 verse style literal block. */
+div.verseblock + div.attribution {
+  text-align: left;
+}
+
+div.admonitionblock .icon {
+  vertical-align: top;
+  font-size: 1.1em;
+  font-weight: bold;
+  text-decoration: underline;
+  color: #527bbd;
+  padding-right: 0.5em;
+}
+div.admonitionblock td.content {
+  padding-left: 0.5em;
+  border-left: 3px solid #dddddd;
+}
+
+div.exampleblock > div.content {
+  border-left: 3px solid #dddddd;
+  padding-left: 0.5em;
+}
+
+div.imageblock div.content { padding-left: 0; }
+span.image img { border-style: none; vertical-align: text-bottom; }
+a.image:visited { color: white; }
+
+dl {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+dt {
+  margin-top: 0.5em;
+  margin-bottom: 0;
+  font-style: normal;
+  color: navy;
+}
+dd > *:first-child {
+  margin-top: 0.1em;
+}
+
+ul, ol {
+    list-style-position: outside;
+}
+ol.arabic {
+  list-style-type: decimal;
+}
+ol.loweralpha {
+  list-style-type: lower-alpha;
+}
+ol.upperalpha {
+  list-style-type: upper-alpha;
+}
+ol.lowerroman {
+  list-style-type: lower-roman;
+}
+ol.upperroman {
+  list-style-type: upper-roman;
+}
+
+div.compact ul, div.compact ol,
+div.compact p, div.compact p,
+div.compact div, div.compact div {
+  margin-top: 0.1em;
+  margin-bottom: 0.1em;
+}
+
+tfoot {
+  font-weight: bold;
+}
+td > div.verse {
+  white-space: pre;
+}
+
+div.hdlist {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+div.hdlist tr {
+  padding-bottom: 15px;
+}
+dt.hdlist1.strong, td.hdlist1.strong {
+  font-weight: bold;
+}
+td.hdlist1 {
+  vertical-align: top;
+  font-style: normal;
+  padding-right: 0.8em;
+  color: navy;
+}
+td.hdlist2 {
+  vertical-align: top;
+}
+div.hdlist.compact tr {
+  margin: 0;
+  padding-bottom: 0;
+}
+
+.comment {
+  background: yellow;
+}
+
+.footnote, .footnoteref {
+  font-size: 0.8em;
+}
+
+span.footnote, span.footnoteref {
+  vertical-align: super;
+}
+
+#footnotes {
+  margin: 20px 0 20px 0;
+  padding: 7px 0 0 0;
+}
+
+#footnotes div.footnote {
+  margin: 0 0 5px 0;
+}
+
+#footnotes hr {
+  border: none;
+  border-top: 1px solid silver;
+  height: 1px;
+  text-align: left;
+  margin-left: 0;
+  width: 20%;
+  min-width: 100px;
+}
+
+div.colist td {
+  padding-right: 0.5em;
+  padding-bottom: 0.3em;
+  vertical-align: top;
+}
+div.colist td img {
+  margin-top: 0.3em;
+}
+
+@media print {
+  #footer-badges { display: none; }
+}
+
+#toc {
+  margin-bottom: 2.5em;
+}
+
+#toctitle {
+  color: #527bbd;
+  font-size: 1.1em;
+  font-weight: bold;
+  margin-top: 1.0em;
+  margin-bottom: 0.1em;
+}
+
+div.toclevel0, div.toclevel1, div.toclevel2, div.toclevel3, div.toclevel4 {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+div.toclevel2 {
+  margin-left: 2em;
+  font-size: 0.9em;
+}
+div.toclevel3 {
+  margin-left: 4em;
+  font-size: 0.9em;
+}
+div.toclevel4 {
+  margin-left: 6em;
+  font-size: 0.9em;
+}
+
+span.aqua { color: aqua; }
+span.black { color: black; }
+span.blue { color: blue; }
+span.fuchsia { color: fuchsia; }
+span.gray { color: gray; }
+span.green { color: green; }
+span.lime { color: lime; }
+span.maroon { color: maroon; }
+span.navy { color: navy; }
+span.olive { color: olive; }
+span.purple { color: purple; }
+span.red { color: red; }
+span.silver { color: silver; }
+span.teal { color: teal; }
+span.white { color: white; }
+span.yellow { color: yellow; }
+
+span.aqua-background { background: aqua; }
+span.black-background { background: black; }
+span.blue-background { background: blue; }
+span.fuchsia-background { background: fuchsia; }
+span.gray-background { background: gray; }
+span.green-background { background: green; }
+span.lime-background { background: lime; }
+span.maroon-background { background: maroon; }
+span.navy-background { background: navy; }
+span.olive-background { background: olive; }
+span.purple-background { background: purple; }
+span.red-background { background: red; }
+span.silver-background { background: silver; }
+span.teal-background { background: teal; }
+span.white-background { background: white; }
+span.yellow-background { background: yellow; }
+
+span.big { font-size: 2em; }
+span.small { font-size: 0.6em; }
+
+span.underline { text-decoration: underline; }
+span.overline { text-decoration: overline; }
+span.line-through { text-decoration: line-through; }
+
+div.unbreakable { page-break-inside: avoid; }
+
+
+/*
+ * xhtml11 specific
+ *
+ * */
+
+div.tableblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.tableblock > table {
+  border: 3px solid #527bbd;
+}
+thead, p.table.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+p.table {
+  margin-top: 0;
+}
+/* Because the table frame attribute is overriden by CSS in most browsers. */
+div.tableblock > table[frame="void"] {
+  border-style: none;
+}
+div.tableblock > table[frame="hsides"] {
+  border-left-style: none;
+  border-right-style: none;
+}
+div.tableblock > table[frame="vsides"] {
+  border-top-style: none;
+  border-bottom-style: none;
+}
+
+
+/*
+ * html5 specific
+ *
+ * */
+
+table.tableblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+thead, p.tableblock.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+p.tableblock {
+  margin-top: 0;
+}
+table.tableblock {
+  border-width: 3px;
+  border-spacing: 0px;
+  border-style: solid;
+  border-color: #527bbd;
+  border-collapse: collapse;
+}
+th.tableblock, td.tableblock {
+  border-width: 1px;
+  padding: 4px;
+  border-style: solid;
+  border-color: #527bbd;
+}
+
+table.tableblock.frame-topbot {
+  border-left-style: hidden;
+  border-right-style: hidden;
+}
+table.tableblock.frame-sides {
+  border-top-style: hidden;
+  border-bottom-style: hidden;
+}
+table.tableblock.frame-none {
+  border-style: hidden;
+}
+
+th.tableblock.halign-left, td.tableblock.halign-left {
+  text-align: left;
+}
+th.tableblock.halign-center, td.tableblock.halign-center {
+  text-align: center;
+}
+th.tableblock.halign-right, td.tableblock.halign-right {
+  text-align: right;
+}
+
+th.tableblock.valign-top, td.tableblock.valign-top {
+  vertical-align: top;
+}
+th.tableblock.valign-middle, td.tableblock.valign-middle {
+  vertical-align: middle;
+}
+th.tableblock.valign-bottom, td.tableblock.valign-bottom {
+  vertical-align: bottom;
+}
+
+
+/*
+ * manpage specific
+ *
+ * */
+
+body.manpage h1 {
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  border-top: 2px solid silver;
+  border-bottom: 2px solid silver;
+}
+body.manpage h2 {
+  border-style: none;
+}
+body.manpage div.sectionbody {
+  margin-left: 3em;
+}
+
+@media print {
+  body.manpage div#toc { display: none; }
+}
+
+
+</style>
+<script type="text/javascript">
+/*<![CDATA[*/
+var asciidoc = {  // Namespace.
+
+/////////////////////////////////////////////////////////////////////
+// Table Of Contents generator
+/////////////////////////////////////////////////////////////////////
+
+/* Author: Mihai Bazon, September 2002
+ * http://students.infoiasi.ro/~mishoo
+ *
+ * Table Of Content generator
+ * Version: 0.4
+ *
+ * Feel free to use this script under the terms of the GNU General Public
+ * License, as long as you do not remove or alter this notice.
+ */
+
+ /* modified by Troy D. Hanson, September 2006. License: GPL */
+ /* modified by Stuart Rackham, 2006, 2009. License: GPL */
+
+// toclevels = 1..4.
+toc: function (toclevels) {
+
+  function getText(el) {
+    var text = "";
+    for (var i = el.firstChild; i != null; i = i.nextSibling) {
+      if (i.nodeType == 3 /* Node.TEXT_NODE */) // IE doesn't speak constants.
+        text += i.data;
+      else if (i.firstChild != null)
+        text += getText(i);
+    }
+    return text;
+  }
+
+  function TocEntry(el, text, toclevel) {
+    this.element = el;
+    this.text = text;
+    this.toclevel = toclevel;
+  }
+
+  function tocEntries(el, toclevels) {
+    var result = new Array;
+    var re = new RegExp('[hH]([1-'+(toclevels+1)+'])');
+    // Function that scans the DOM tree for header elements (the DOM2
+    // nodeIterator API would be a better technique but not supported by all
+    // browsers).
+    var iterate = function (el) {
+      for (var i = el.firstChild; i != null; i = i.nextSibling) {
+        if (i.nodeType == 1 /* Node.ELEMENT_NODE */) {
+          var mo = re.exec(i.tagName);
+          if (mo && (i.getAttribute("class") || i.getAttribute("className")) != "float") {
+            result[result.length] = new TocEntry(i, getText(i), mo[1]-1);
+          }
+          iterate(i);
+        }
+      }
+    }
+    iterate(el);
+    return result;
+  }
+
+  var toc = document.getElementById("toc");
+  if (!toc) {
+    return;
+  }
+
+  // Delete existing TOC entries in case we're reloading the TOC.
+  var tocEntriesToRemove = [];
+  var i;
+  for (i = 0; i < toc.childNodes.length; i++) {
+    var entry = toc.childNodes[i];
+    if (entry.nodeName.toLowerCase() == 'div'
+     && entry.getAttribute("class")
+     && entry.getAttribute("class").match(/^toclevel/))
+      tocEntriesToRemove.push(entry);
+  }
+  for (i = 0; i < tocEntriesToRemove.length; i++) {
+    toc.removeChild(tocEntriesToRemove[i]);
+  }
+
+  // Rebuild TOC entries.
+  var entries = tocEntries(document.getElementById("content"), toclevels);
+  for (var i = 0; i < entries.length; ++i) {
+    var entry = entries[i];
+    if (entry.element.id == "")
+      entry.element.id = "_toc_" + i;
+    var a = document.createElement("a");
+    a.href = "#" + entry.element.id;
+    a.appendChild(document.createTextNode(entry.text));
+    var div = document.createElement("div");
+    div.appendChild(a);
+    div.className = "toclevel" + entry.toclevel;
+    toc.appendChild(div);
+  }
+  if (entries.length == 0)
+    toc.parentNode.removeChild(toc);
+},
+
+
+/////////////////////////////////////////////////////////////////////
+// Footnotes generator
+/////////////////////////////////////////////////////////////////////
+
+/* Based on footnote generation code from:
+ * http://www.brandspankingnew.net/archive/2005/07/format_footnote.html
+ */
+
+footnotes: function () {
+  // Delete existing footnote entries in case we're reloading the footnodes.
+  var i;
+  var noteholder = document.getElementById("footnotes");
+  if (!noteholder) {
+    return;
+  }
+  var entriesToRemove = [];
+  for (i = 0; i < noteholder.childNodes.length; i++) {
+    var entry = noteholder.childNodes[i];
+    if (entry.nodeName.toLowerCase() == 'div' && entry.getAttribute("class") == "footnote")
+      entriesToRemove.push(entry);
+  }
+  for (i = 0; i < entriesToRemove.length; i++) {
+    noteholder.removeChild(entriesToRemove[i]);
+  }
+
+  // Rebuild footnote entries.
+  var cont = document.getElementById("content");
+  var spans = cont.getElementsByTagName("span");
+  var refs = {};
+  var n = 0;
+  for (i=0; i<spans.length; i++) {
+    if (spans[i].className == "footnote") {
+      n++;
+      var note = spans[i].getAttribute("data-note");
+      if (!note) {
+        // Use [\s\S] in place of . so multi-line matches work.
+        // Because JavaScript has no s (dotall) regex flag.
+        note = spans[i].innerHTML.match(/\s*\[([\s\S]*)]\s*/)[1];
+        spans[i].innerHTML =
+          "[<a id='_footnoteref_" + n + "' href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+        spans[i].setAttribute("data-note", note);
+      }
+      noteholder.innerHTML +=
+        "<div class='footnote' id='_footnote_" + n + "'>" +
+        "<a href='#_footnoteref_" + n + "' title='Return to text'>" +
+        n + "</a>. " + note + "</div>";
+      var id =spans[i].getAttribute("id");
+      if (id != null) refs["#"+id] = n;
+    }
+  }
+  if (n == 0)
+    noteholder.parentNode.removeChild(noteholder);
+  else {
+    // Process footnoterefs.
+    for (i=0; i<spans.length; i++) {
+      if (spans[i].className == "footnoteref") {
+        var href = spans[i].getElementsByTagName("a")[0].getAttribute("href");
+        href = href.match(/#.*/)[0];  // Because IE return full URL.
+        n = refs[href];
+        spans[i].innerHTML =
+          "[<a href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+      }
+    }
+  }
+},
+
+install: function(toclevels) {
+  var timerId;
+
+  function reinstall() {
+    asciidoc.footnotes();
+    if (toclevels) {
+      asciidoc.toc(toclevels);
+    }
+  }
+
+  function reinstallAndRemoveTimer() {
+    clearInterval(timerId);
+    reinstall();
+  }
+
+  timerId = setInterval(reinstall, 500);
+  if (document.addEventListener)
+    document.addEventListener("DOMContentLoaded", reinstallAndRemoveTimer, false);
+  else
+    window.onload = reinstallAndRemoveTimer;
+}
+
+}
+asciidoc.install(4);
+/*]]>*/
+</script>
+</head>
+<body class="article">
+<div id="header">
+<div id="toc">
+  <div id="toctitle">Table of Contents</div>
+  <noscript><p><b>JavaScript must be enabled in your browser to display the table of contents.</b></p></noscript>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="_jürgen_8217_s_raspberry_pi_zero_hat">Jürgen&#8217;s Raspberry Pi Zero hat</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview">Overview</h3>
+<div class="paragraph"><p>Unlike other Raspberry hats, this hat is larger than the Raspberry Zero, so
+the raspberry is plugged onto the hat rather than the hat being pluggend onto
+the rapberry.</p></div>
+<div class="paragraph"><p>Although the hat was designed for the Raspberry Pi Zero form factor, it
+supposedly also works for other Raspberry Pi models.</p></div>
+<div class="paragraph"><p>The hat contains only a few active components; the rest is connectors for
+various purposes. Almost all components are optional and only needed if the
+interface that they belong to is needed. The hat provides the following
+connectors/interfaces:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+J1: The main interface between the hat and the Raspberry Pi Zero
+</p>
+</li>
+<li>
+<p>
+X1: an interface to a 3 Line LCD Display
+</p>
+</li>
+<li>
+<p>
+J2: an interface for enocean TCM310 hat (or alternatively a serial interface
+<strong>at 3.3 Volt level (!)</strong>)
+</p>
+</li>
+<li>
+<p>
+J3, J4, J5 and J6: I<sup>2</sup>C interfaces (on the same I<sup>2</sup>C bus)
+</p>
+</li>
+<li>
+<p>
+J11/J12 open-collector outputs connected to the Raspi&#8217;s hardware PWM units
+</p>
+</li>
+<li>
+<p>
+J9 and J10: two 220Volt Relays
+</p>
+</li>
+<li>
+<p>
+SW1: one pushbutton
+</p>
+</li>
+<li>
+<p>
+J8: 20 pin header with some more general purpose interface lines
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>All these interfaces are controlled via GPIO lines of the Raspberry; the
+I<sup>2</sup>C and PWM interfaces can be realized either in software or in hardware.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_the_main_connector_j1">The main connector J1</h3>
+<div class="paragraph"><p>The only non-optional component is J1, which connects the hat with a Raspberry
+Pi Zero. The hat gets its power (3.3 and 5 Volts) via its J1 from the
+Raspberry, therefore the power from the power supply should go into the
+Raspberry&#8217;s normal power connector (J1/PWR IN), and not to the hat&#8217;s J1.</p></div>
+<div class="paragraph"><p>Most of the remaining lines on <strong>J1</strong> are GPIO lines. Unfortunately there exist
+exist 2 different naming/numbering conventions: the <strong>Broadcom scheme</strong> and
+the <strong>WiringPi scheme</strong>. If you control the GIPO pins by reading from and
+writing to files below <strong>/sys/class/gpio</strong> then the GPIO numbers used are those
+defined by the <strong>Broadcom scheme</strong>. If you instead use a library like wiringPi,
+then the pin numbers are completely differen and are defined by the <strong>WiringPi
+scheme</strong>. The following table shows the mapping between the pin numbers of the
+hat&#8217;s J1 connector, the <strong>Broadcom scheme</strong>, and the <strong>WiringPi scheme</strong>:</p></div>
+<div class="tableblock">
+<table rules="all"
+width="80%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="5%" />
+<col width="5%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<thead>
+<tr>
+<th align="center" valign="top">Alias</th>
+<th align="center" valign="top">Wiring Pi
+Name</th>
+<th align="center" valign="top">Broadcom
+Name</th>
+<th colspan="2" align="center" valign="top">J1
+Pin</th>
+<th align="center" valign="top">Broadcom
+Name</th>
+<th align="center" valign="top">Wiring Pi
+Name</th>
+<th align="center" valign="top">Alias
+          </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td colspan="3" align="center" valign="top"><p class="table">Power 3.3 Volts</p></td>
+<td align="center" valign="top"><p class="table">1</p></td>
+<td align="center" valign="top"><p class="table">2</p></td>
+<td colspan="3" rowspan="2" align="center" valign="top"><div class="verse"> Power 5 Volts</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">I<sup>2</sup>C Data</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-8   </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-2    </div></td>
+<td align="center" valign="top"><p class="table">3</p></td>
+<td align="center" valign="top"><p class="table">4</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">I<sup>2</sup>C Clock</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-9   </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-3    </div></td>
+<td align="center" valign="top"><p class="table">5</p></td>
+<td align="center" valign="top"><p class="table">6</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> GND</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table"></p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-7   </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-4    </div></td>
+<td align="center" valign="top"><p class="table">7</p></td>
+<td align="center" valign="top"><p class="table">8</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-14 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-15  </div></td>
+<td align="center" valign="top"><p class="table"></p></td>
+</tr>
+<tr>
+<td colspan="3" align="center" valign="top"><p class="table">GND</p></td>
+<td align="center" valign="top"><p class="table">9</p></td>
+<td align="center" valign="top"><p class="table">10</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-15 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-16  </div></td>
+<td align="center" valign="top"><p class="table"></p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table"></p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-0   </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-17   </div></td>
+<td align="center" valign="top"><p class="table">11</p></td>
+<td align="center" valign="top"><p class="table">12</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-18 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-1   </div></td>
+<td align="center" valign="top"><p class="table"></p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table"></p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-2   </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-27   </div></td>
+<td align="center" valign="top"><p class="table">13</p></td>
+<td align="center" valign="top"><p class="table">14</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> GND</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table"></p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-3   </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-22   </div></td>
+<td align="center" valign="top"><p class="table">15</p></td>
+<td align="center" valign="top"><p class="table">16</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-23 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-4   </div></td>
+<td align="center" valign="top"><p class="table"></p></td>
+</tr>
+<tr>
+<td colspan="3" align="center" valign="top"><p class="table">Power</p></td>
+<td align="center" valign="top"><p class="table">17</p></td>
+<td align="center" valign="top"><p class="table">18</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-24 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-5   </div></td>
+<td align="center" valign="top"><p class="table"></p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table"></p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-12  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-10   </div></td>
+<td align="center" valign="top"><p class="table">19</p></td>
+<td align="center" valign="top"><p class="table">20</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> GND</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table"></p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-13  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-9    </div></td>
+<td align="center" valign="top"><p class="table">21</p></td>
+<td align="center" valign="top"><p class="table">22</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-25 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-6   </div></td>
+<td align="center" valign="top"><p class="table"></p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table"></p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-14  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-11   </div></td>
+<td align="center" valign="top"><p class="table">23</p></td>
+<td align="center" valign="top"><p class="table">24</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-8  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-10  </div></td>
+<td align="center" valign="top"><p class="table"></p></td>
+</tr>
+<tr>
+<td colspan="3" align="center" valign="top"><p class="table">GND</p></td>
+<td align="center" valign="top"><p class="table">25</p></td>
+<td align="center" valign="top"><p class="table">26</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-7  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-11  </div></td>
+<td align="center" valign="top"><p class="table"></p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table"></p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-30  </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">27</p></td>
+<td align="center" valign="top"><p class="table">28</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-1  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-31  </div></td>
+<td align="center" valign="top"><p class="table"></p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table"></p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-21  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-5    </div></td>
+<td align="center" valign="top"><p class="table">29</p></td>
+<td align="center" valign="top"><p class="table">30</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> GND</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table"></p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-22  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-6    </div></td>
+<td align="center" valign="top"><p class="table">31</p></td>
+<td align="center" valign="top"><p class="table">32</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-12 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-26  </div></td>
+<td align="center" valign="top"><p class="table">PWM-0</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">PWM-1</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-23  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-13   </div></td>
+<td align="center" valign="top"><p class="table">33</p></td>
+<td align="center" valign="top"><p class="table">34</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> GND</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table"></p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-24  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-19   </div></td>
+<td align="center" valign="top"><p class="table">35</p></td>
+<td align="center" valign="top"><p class="table">36</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-16 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-27  </div></td>
+<td align="center" valign="top"><p class="table"></p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table"></p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-25  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-26   </div></td>
+<td align="center" valign="top"><p class="table">37</p></td>
+<td align="center" valign="top"><p class="table">38</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-20 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-28  </div></td>
+<td align="center" valign="top"><p class="table"></p></td>
+</tr>
+<tr>
+<td colspan="3" align="center" valign="top"><p class="table">GND</p></td>
+<td align="center" valign="top"><p class="table">39</p></td>
+<td align="center" valign="top"><p class="table">40</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-21 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-29  </div></td>
+<td align="center" valign="top"><p class="table"></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_enocean_connector_j2">Enocean connector J2</h3>
+<div class="paragraph"><p>J2 connects the hat with an Enocean TCM310 based Raspi Transceiver Module.
+The enocean Module is plugged directly onto J2 of the hat.
+The connection uses the RxD and TxD lines of RasPi UART (aka. <strong>/dev/ttyAMA0</strong>).
+The Data format is 57600 Baud, 8N1. Instead of the TCM310 Module, you can use
+this connector for other purposes that need a serial connection.</p></div>
+<div class="paragraph"><p>The Enocean connector J2 has the following pinout:</p></div>
+<div class="tableblock">
+<table rules="all"
+width="50%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="28%" />
+<col width="7%" />
+<col width="7%" />
+<col width="18%" />
+<col width="18%" />
+<col width="18%" />
+<thead>
+<tr>
+<th align="center" valign="top">Alias</th>
+<th colspan="2" align="center" valign="top">J2
+   Pin
+  </th>
+<th align="center" valign="top">Broadcom
+    Name
+  </th>
+<th align="center" valign="top">Wiring Pi
+   Name
+  </th>
+<th align="center" valign="top">Alias</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center" valign="top"><p class="table">Power 3.3 Volts</p></td>
+<td align="center" valign="top"><p class="table">1</p></td>
+<td align="center" valign="top"><p class="table">2</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">3</p></td>
+<td align="center" valign="top"><p class="table">4</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">5</p></td>
+<td align="center" valign="top"><p class="table">6</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> GND</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">7</p></td>
+<td align="center" valign="top"><p class="table">8</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-14 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-15 </div></td>
+<td align="center" valign="top"><p class="table">RxD</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">9</p></td>
+<td align="center" valign="top"><p class="table">10</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-15 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-16 </div></td>
+<td align="center" valign="top"><p class="table">TxD</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">11</p></td>
+<td align="center" valign="top"><p class="table">12</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">13</p></td>
+<td align="center" valign="top"><p class="table">14</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">15</p></td>
+<td align="center" valign="top"><p class="table">16</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">17</p></td>
+<td align="center" valign="top"><p class="table">18</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">19</p></td>
+<td align="center" valign="top"><p class="table">20</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">21</p></td>
+<td align="center" valign="top"><p class="table">22</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">23</p></td>
+<td align="center" valign="top"><p class="table">24</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">25</p></td>
+<td align="center" valign="top"><p class="table">26</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_i_sup_2_sup_c_connectors_j3_j4_j5_and_j6">I<sup>2</sup>C connectors J3, J4, J5, and J6</h3>
+<div class="paragraph"><p>These connectors are connected in parallel (so that they belong to the same
+I<sup>2</sup>C bus). They are typically used to connect sensors. It is normally better
+to put sensors that are located close to each other on one cable (bus
+connection) than using separate cables (star connection), because that way
+the signal reflections at the ends of (unterminated) cables are being reduced.</p></div>
+<div class="paragraph"><p>If the cable(s) are too long then the I<sup>2</sup>C becomes unreliable and buffering
+and/or proper termination of the cables might be needed. Another solution
+for long cables could be to run the I<sup>2</sup>C in software (using
+<strong>/sys/class/gpio/gpio9/value</strong> for the I<sup>2</sup>C clock and
+<strong>/sys/class/gpio/gpio8/value</strong> for the I<sup>2</sup>C data, instead of <strong>/dev/i2c-1</strong>.</p></div>
+<div class="paragraph"><p>Every I<sup>2</sup>C connector J3, J4, J5, or J6 has the same pinout:</p></div>
+<div class="tableblock">
+<table rules="all"
+width="40%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="10%" />
+<col width="25%" />
+<col width="25%" />
+<col width="38%" />
+<thead>
+<tr>
+<th align="center" valign="top"> Pin</th>
+<th align="center" valign="top"> Broadcom
+  Name</th>
+<th align="center" valign="top"> WiringPi
+  Name</th>
+<th align="center" valign="top"> Alias</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center" valign="top"><p class="table">1</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse">Power 3.3 Volts</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">2</p></td>
+<td align="center" valign="top"><div class="verse">GPIO-2</div></td>
+<td align="center" valign="top"><div class="verse">GPIO-8</div></td>
+<td align="center" valign="top"><p class="table">I<sup>2</sup>C Data</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">3</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse">GND</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">4</p></td>
+<td align="center" valign="top"><div class="verse">GPIO-3</div></td>
+<td align="center" valign="top"><div class="verse">GPIO-9</div></td>
+<td align="center" valign="top"><p class="table">I<sup>2</sup>C Clock</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_lcd_display_x1">LCD Display X1</h3>
+<div class="paragraph"><p>The hat may optionally be equipped with a 3-line LCD Dispay. The display is
+mounted on connector X1, which is a standard 40-pin, 600 mil socket with some
+pins not used. The pinout of X1 is:</p></div>
+<div class="tableblock">
+<table rules="all"
+width="80%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="5%" />
+<col width="5%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<thead>
+<tr>
+<th align="center" valign="top">Alias</th>
+<th align="center" valign="top">Wiring Pi
+Name</th>
+<th align="center" valign="top">Broadcom
+Name</th>
+<th colspan="2" align="center" valign="top">J1
+Pin</th>
+<th align="center" valign="top">Broadcom
+Name</th>
+<th align="center" valign="top">Wiring Pi
+Name</th>
+<th align="center" valign="top">Alias</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center" valign="top"><p class="table">A1 +</p></td>
+<td colspan="2" align="center" valign="top"><div class="verse">J7 Pin 2 3.3/5 Volts  </div></td>
+<td align="center" valign="top"><p class="table">1</p></td>
+<td align="center" valign="top"><p class="table">40</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-11 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-14     </div></td>
+<td align="center" valign="top"><p class="table">RESET</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">C1 -</p></td>
+<td colspan="2" align="center" valign="top"><div class="verse">R<sub>LED</sub>                </div></td>
+<td align="center" valign="top"><p class="table">2</p></td>
+<td align="center" valign="top"><p class="table">39</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-21 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-29     </div></td>
+<td align="center" valign="top"><p class="table">RS</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">38</p></td>
+<td colspan="2" align="center" valign="top"><div class="verse"> GND         </div></td>
+<td align="center" valign="top"><p class="table">CSB</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">37</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-20 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-28     </div></td>
+<td align="center" valign="top"><p class="table">R/W</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">36</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-16 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-27     </div></td>
+<td align="center" valign="top"><p class="table">E</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">35</p></td>
+<td rowspan="4" align="center" valign="top"><div class="verse"> </div></td>
+<td rowspan="4" align="center" valign="top"><div class="verse"> 3.3 Volts </div></td>
+<td align="center" valign="top"><p class="table">D0</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">34</p></td>
+<td align="center" valign="top"><p class="table">D1</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">33</p></td>
+<td align="center" valign="top"><p class="table">D2</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">32</p></td>
+<td align="center" valign="top"><p class="table">D3</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">31</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-7  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-11     </div></td>
+<td align="center" valign="top"><p class="table">D4</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">30</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-8  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-10     </div></td>
+<td align="center" valign="top"><p class="table">D5</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">29</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-25 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-6      </div></td>
+<td align="center" valign="top"><p class="table">D6</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">28</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-24 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-5      </div></td>
+<td align="center" valign="top"><p class="table">D7</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">27</p></td>
+<td colspan="2" align="center" valign="top"><div class="verse"> GND         </div></td>
+<td align="center" valign="top"><p class="table">V<sub>SS</sub></p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">26</p></td>
+<td colspan="2" align="center" valign="top"><div class="verse"> 3.3 Volts   </div></td>
+<td align="center" valign="top"><p class="table">V<sub>DD</sub></p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">25</p></td>
+<td colspan="2" align="center" valign="top"><div class="verse"> 3.3 Volts   </div></td>
+<td align="center" valign="top"><p class="table">V<sub>in</sub></p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">24</p></td>
+<td colspan="2" align="center" valign="top"><div class="verse"> (charge pump) </div></td>
+<td align="center" valign="top"><p class="table">V<sub>out</sub></p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><div class="verse">          </div></td>
+<td align="center" valign="top"><div class="verse">           </div></td>
+<td align="center" valign="top"><p class="table">-</p></td>
+<td align="center" valign="top"><p class="table">23</p></td>
+<td colspan="2" align="center" valign="top"><div class="verse"> 3.3 Volts   </div></td>
+<td align="center" valign="top"><p class="table">PSB</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">C2 -</p></td>
+<td colspan="2" align="center" valign="top"><div class="verse">GND                   </div></td>
+<td align="center" valign="top"><p class="table">19</p></td>
+<td align="center" valign="top"><p class="table">22</p></td>
+<td colspan="2" align="center" valign="top"><div class="verse"> (charge pump) </div></td>
+<td align="center" valign="top"><p class="table">CAP1P</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">A2 +</p></td>
+<td colspan="2" align="center" valign="top"><div class="verse">R<sub>LED</sub>                </div></td>
+<td align="center" valign="top"><p class="table">20</p></td>
+<td align="center" valign="top"><p class="table">21</p></td>
+<td colspan="2" align="center" valign="top"><div class="verse"> (charge pump) </div></td>
+<td align="center" valign="top"><p class="table">CAP1N</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_backlight_power_selector_j7">Backlight Power Selector J7</h3>
+<div class="paragraph"><p>The optional LCD display X1 can by equipped with an optional LED backlight
+in order to improve its readability. The optional LED backlight can either be
+driven from 3.3 Volts or from 5 Volts. Driving it from 5 Volts is supposedly
+better since the current of the backlight (about 40 mA) does not flow through
+the RasPi&#8217;s 5Volt → 3.3Volt converter.</p></div>
+<div class="tableblock">
+<table rules="all"
+width="40%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="33%" />
+<col width="66%" />
+<thead>
+<tr>
+<th colspan="2" align="center" valign="top">Jumper J7
+  </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center" valign="top"><p class="table">1-2</p></td>
+<td align="center" valign="top"><p class="table">Run LED backlight from 3.3 Volts</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">2-3</p></td>
+<td align="center" valign="top"><p class="table">Run LED backlight from 5 Volts</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<img src="/usr/share/asciidoc/icons/caution.png" alt="Caution" />
+</td>
+<td class="content">The LED backlight current <strong>MUST</strong> be limited, this is accomplished by
+resistor below the LCD display X1. The PCB shows a value of 10 (Ohms). This
+value is, however, dependant on two factors: the setting of J7 and the color
+of the LEDs. Typical values lie between about 0 and 30 Ohms, if unsure start
+with 30 Ohms and decrease as needed. For prototyping use a connector instead
+of soldering a (possibly incorrect) resistor.</td>
+</tr></table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_extension_connector_j8">Extension connector J8</h3>
+<div class="paragraph"><p>Most of the GPIO lines that are not connected with specific interfaces
+are conncted to J8. That way additional components can be connected to the
+RasPi as needed. The Pinout of J8 is:</p></div>
+<div class="tableblock">
+<table rules="all"
+width="50%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="20%" />
+<col width="20%" />
+<col width="8%" />
+<col width="8%" />
+<col width="20%" />
+<col width="20%" />
+<thead>
+<tr>
+<th align="center" valign="top">Wiring Pi
+Name</th>
+<th align="center" valign="top">Broadcom
+Name</th>
+<th colspan="2" align="center" valign="top">J8
+Pins</th>
+<th align="center" valign="top">Broadcom
+Name</th>
+<th align="center" valign="top">Wiring Pi
+Name
+
+  </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center" valign="top"><div class="verse"> GPIO-13  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-9   </div></td>
+<td align="center" valign="top"><p class="table">1</p></td>
+<td align="center" valign="top"><p class="table">2</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-10 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-12
+  </div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><div class="verse"> GPIO-5   </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-21  </div></td>
+<td align="center" valign="top"><p class="table">3</p></td>
+<td align="center" valign="top"><p class="table">4</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-3  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-22
+  </div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><div class="verse"> GPIO-6   </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-22  </div></td>
+<td align="center" valign="top"><p class="table">5</p></td>
+<td align="center" valign="top"><p class="table">6</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-4  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-23
+  </div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><div class="verse"> GPIO-19  </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-24  </div></td>
+<td align="center" valign="top"><p class="table">7</p></td>
+<td align="center" valign="top"><p class="table">8</p></td>
+<td colspan="2" align="center" valign="top"><div class="verse"> Power 3.3V</div></td>
+</tr>
+<tr>
+<td colspan="2" align="center" valign="top"><div class="verse"> GND                 </div></td>
+<td align="center" valign="top"><p class="table">9</p></td>
+<td align="center" valign="top"><p class="table">10</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-25 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-26</div></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_220_volt_connectors_j9_and_j10">220 Volt Connectors J9 and J10</h3>
+<div class="paragraph"><p>The hat can be equipped with one or two relays that both can switch a 220 Volt
+power line. The Line (L) inputs of J9 and J10 are connected, it is therefore
+<strong>NOT</strong> possible to switch different phases, e.g. L1 and L2, of the same neutral
+(N) line.</p></div>
+<div class="paragraph"><p>The coils of each relays also operate at 220 Volt (or whatever voltage you
+choose for the relay components) and are galvanically isolated from the hat
+and the RasPi by means of optocoupler triacs (MOC 3041 or similar).
+The relay coild both use the primary AC input, therefore the secondary relay
+cannot be used without the primary.</p></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<img src="/usr/share/asciidoc/icons/note.png" alt="Note" />
+</td>
+<td class="content">For operation at 110 Volts you may need smaller values for the 470 Ohm
+resistors above the LCD display X1. Refer to the MOC 3063 data sheet for
+details. The coils of the relays should be protected with varistors R7 resp.
+R8 that suppress inductive spikes when a coil is being turned off.
+The values of the varistors need to match the voltage used for the relay,
+e.g. 270 Volts for 220 Volt relay coils and 140 Volts for 110 Volt relay
+coils.</td>
+</tr></table>
+</div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<img src="/usr/share/asciidoc/icons/warning.png" alt="Warning" />
+</td>
+<td class="content">Unlike the coils of the relays, the relay contacts are <strong>NOT</strong> protected
+with varistors. For ohmic loads (e.g lamps) such protection is not needed, but
+for inductive loads (e.g. motors for blinds, door openers, etc.) additional
+protection for the relay contacts is recommended.</td>
+</tr></table>
+</div>
+<div class="paragraph"><p>Connector J9, the primary 220 Volt connector, has one more pin than J10: this
+pin provides the neutral (N) line for both relay coils and contacts. The
+pinouts of J9 and J10 are:</p></div>
+<div class="tableblock">
+<table rules="all"
+width="40%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="28%" />
+<col width="71%" />
+<thead>
+<tr>
+<th align="center" valign="top">J9 Pin</th>
+<th align="center" valign="top">Purpose
+  </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center" valign="top"><p class="table">1</p></td>
+<td align="center" valign="top"><p class="table">Neutral (N)</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">2</p></td>
+<td align="center" valign="top"><p class="table">Line out if Relay is OFF</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">3</p></td>
+<td align="center" valign="top"><p class="table">Line in (L)</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">2</p></td>
+<td align="center" valign="top"><p class="table">Line out if Relay is ON</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="tableblock">
+<table rules="all"
+width="40%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="28%" />
+<col width="71%" />
+<thead>
+<tr>
+<th align="center" valign="top">J10 Pin</th>
+<th align="center" valign="top">Purpose
+  </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center" valign="top"><p class="table">1</p></td>
+<td align="center" valign="top"><p class="table">Line out if Relay is OFF</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">2</p></td>
+<td align="center" valign="top"><p class="table">Line in (L)</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">3</p></td>
+<td align="center" valign="top"><p class="table">Line out if Relay is ON</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="paragraph"><p>The relays (ON/OFF) are controlled with the following GPIO pins:</p></div>
+<div class="tableblock">
+<table rules="all"
+width="40%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="28%" />
+<col width="28%" />
+<col width="42%" />
+<thead>
+<tr>
+<th align="center" valign="top">Broadcom
+ Name</th>
+<th align="center" valign="top">Wiring Pi
+ Name
+ </th>
+<th align="center" valign="top">Relay</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center" valign="top"><div class="verse"> GPIO-17 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-0 </div></td>
+<td align="center" valign="top"><p class="table">Relay J9  ON/OFF</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><div class="verse"> GPIO-27 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-2 </div></td>
+<td align="center" valign="top"><p class="table">Relay J10 ON/OFF</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_pwm_connectors_j11_and_j12">PWM Connectors J11 and J12</h3>
+<div class="paragraph"><p>J11 provides two PWM channels that are driven by the open collectors of the
+two transistors next to J1. These signals can be used, for example, to control
+the speed of fans. J11 has the following pinout:</p></div>
+<div class="tableblock">
+<table rules="all"
+width="40%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="10%" />
+<col width="25%" />
+<col width="25%" />
+<col width="38%" />
+<thead>
+<tr>
+<th align="center" valign="top"> J10 Pin</th>
+<th align="center" valign="top"> Broadcom
+  Name</th>
+<th align="center" valign="top"> Wiring Pi
+  Name
+ </th>
+<th align="center" valign="top"> Alias</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center" valign="top"><p class="table">1</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-12 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-26</div></td>
+<td align="center" valign="top"><p class="table">PWM-1</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">2</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">3</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-23 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-13</div></td>
+<td align="center" valign="top"><p class="table">PWM-0</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">4</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">5</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> GND</div></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="paragraph"><p>J11 is intended for the case where both PWM channels are routed over the same
+cable. In contrast, J12 is intended for the case where differen cables are
+used for the two PWM channels. J12 has the following pinout:</p></div>
+<div class="tableblock">
+<table rules="all"
+width="40%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="10%" />
+<col width="25%" />
+<col width="25%" />
+<col width="38%" />
+<thead>
+<tr>
+<th align="center" valign="top"> J10 Pin</th>
+<th align="center" valign="top"> Broadcom
+  Name</th>
+<th align="center" valign="top"> Wiring Pi
+  Name
+ </th>
+<th align="center" valign="top"> Alias</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center" valign="top"><p class="table">1</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">2</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">3</p></td>
+<td align="center" valign="top"><div class="verse"> GPIO-12 </div></td>
+<td align="center" valign="top"><div class="verse"> GPIO-26</div></td>
+<td align="center" valign="top"><p class="table">PWM-1</p></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">4</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> -</div></td>
+</tr>
+<tr>
+<td align="center" valign="top"><p class="table">5</p></td>
+<td colspan="3" align="center" valign="top"><div class="verse"> GND</div></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="paragraph"><p>If J12 is used, then typically pin 1 of J11 is not.</p></div>
+</div>
+</div>
+</div>
+</div>
+<div id="footnotes"><hr /></div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2020-01-10 20:16:47 CET
+</div>
+</div>
+</body>
+</html>
